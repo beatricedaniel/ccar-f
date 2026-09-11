@@ -1,0 +1,70 @@
+{
+  "domain": 4,
+  "task": "4.2",
+  "label": "Apply few shot prompting to improve output consistency",
+  "started_at": "2026-09-03T11:18:51",
+  "model": "claude-opus-4-8",
+  "deck_generated_at": "2026-09-03T11:11:44",
+  "cards": [
+    {
+      "front": "What is few-shot prompting?",
+      "back": "The practice of embedding concrete input→output examples directly in the prompt. Rather than describing what you want abstractly, you demonstrate it, and the model generalises from the examples to handle new inputs in the same style, format, and register."
+    },
+    {
+      "front": "What is the domain mental model for prompt engineering (Domain 4)?",
+      "back": "Specificity beats vagueness. Examples beat instructions. Schemas beat parsing."
+    },
+    {
+      "front": "Why do examples beat instructions for output consistency?",
+      "back": "Instructions describe a rule but remain ambiguous (e.g. casing, nesting, extra fields, null handling can vary). Examples instantiate the rule concretely, eliminating most variance. The model pattern-matches examples locally in the context window, letting you override general tendencies when your format deviates from convention."
+    },
+    {
+      "front": "What is the difference between happy-path examples and targeted examples?",
+      "back": "Generic (happy-path) examples teach the easy case. Targeted examples teach edge cases you actually care about (e.g. string vs array input, null vs omitted field, boundary classifications). One well-targeted example for a tricky case is worth more than three examples of the easy case."
+    },
+    {
+      "front": "How many few-shot examples should you use for different situations?",
+      "back": "1 example: establishes format for simple schemas. 2–3 examples: the practical default (happy path plus a variation). 4–5 examples: for complex output spaces or numerous edge cases. More than 5: rarely necessary and increases token cost. Stop when the model produces correct output on your test inputs."
+    },
+    {
+      "front": "Where should few-shot examples be placed in the system prompt, and why?",
+      "back": "At the end of the system prompt, immediately before the first human turn. This maximises recency, positioning them closest to the model's first output. Examples buried mid-prompt get partially overridden by later instructions. Wrap long examples in clear delimiters (XML tags are reliable)."
+    },
+    {
+      "front": "Should you describe the output format in prose if you also show it in examples?",
+      "back": "No. Redundancy between prose instructions and examples can create contradictions if they diverge. Let the examples carry the format definition. Add prose only for things that cannot be shown (e.g. 'never include PII in the rationale field')."
+    },
+    {
+      "front": "Why must every few-shot example use identical structure and field names?",
+      "back": "Inconsistent structure (e.g. one example using 'label', another 'classification') teaches the model nothing stable. Every example must follow the exact same schema with the exact same field names and value formats."
+    },
+    {
+      "front": "If output is still inconsistent after several examples, what is usually the real problem?",
+      "back": "The output format/schema itself is ambiguous or under-constrained. Fix it by defining a strict schema (e.g. a JSON Schema or TypeScript type) rather than adding more examples to compensate."
+    },
+    {
+      "front": "For high-stakes structured output, why is few-shot prompting alone insufficient?",
+      "back": "Few-shot improves consistency but does not enforce it. For critical integrations, combine few-shot examples with Claude's native tool-use / structured output feature — a machine-validated schema enforces the format."
+    }
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "scope": "all",
+      "pct_correct": 0.0,
+      "missed": [
+        "What is few-shot prompting?",
+        "What is the domain mental model for prompt engineering (Domain 4)?",
+        "Why do examples beat instructions for output consistency?",
+        "What is the difference between happy-path examples and targeted examples?",
+        "How many few-shot examples should you use for different situations?",
+        "Where should few-shot examples be placed in the system prompt, and why?",
+        "Should you describe the output format in prose if you also show it in examples?",
+        "Why must every few-shot example use identical structure and field names?",
+        "If output is still inconsistent after several examples, what is usually the real problem?",
+        "For high-stakes structured output, why is few-shot prompting alone insufficient?"
+      ]
+    }
+  ],
+  "attempts_to_100": null
+}

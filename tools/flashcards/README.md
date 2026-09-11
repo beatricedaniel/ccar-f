@@ -1,0 +1,75 @@
+# CCAR-F Flashcards
+
+A tiny, single-file CLI that turns a domain/task's theory PDFs into 10 Anki-style
+flashcards and drills you until you score 100 %. Built for preparing the
+**CCAR-F** (Claude Certified Architect – Foundations) exam.
+
+## Requirements
+
+- Python 3 (stdlib only — no `pip install`)
+- `pdftotext` (Poppler) on PATH — `brew install poppler`
+- `ANTHROPIC_API_KEY` in your environment (or a profile via `ant auth login`)
+- `ANTHROPIC_WORKSPACE_ID` **only if** your key is identity-linked — the API then
+  requires the workspace id (format `wrkspc_...`, found in the Console URL
+  `platform.claude.com/workspaces/<id>/...`). If set, the tool sends it automatically.
+
+## Run
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+python3 tools/flashcards/flashcards.py
+```
+
+Then follow the prompts:
+
+1. Pick a **domain** (D1–D5).
+2. Pick a **task** within it.
+3. If you've studied this task before, choose **study existing cards** or
+   **reset** (regenerate 10 fresh cards). New tasks generate automatically.
+4. For each card: press **Enter** to reveal the answer, then mark it
+   **[c]orrect** or **[w]rong**. After a full pass you get a score and can
+   **redo all** or **redo only the missed** cards. Repeat until 100 %.
+
+## Model & cost
+
+The model is chosen at startup from `FLASHCARDS_MODEL`, defaulting to
+`claude-opus-4-8`. Override it per run:
+
+```bash
+FLASHCARDS_MODEL=claude-haiku-4-5 python3 tools/flashcards/flashcards.py
+```
+
+…or make a cheaper model your standing default:
+
+```bash
+echo 'export FLASHCARDS_MODEL="claude-haiku-4-5"' >> ~/.zshrc && source ~/.zshrc
+```
+
+**You only pay when a deck is *generated*** — a brand-new task, or a **reset**.
+Studying or re-drilling an existing deck makes no API call and is free.
+
+Approximate cost (input ~5k–36k tokens/task, ~1.2k output; no thinking):
+
+| Model | Per deck (avg) | All 30 tasks once | Notes |
+|---|---|---|---|
+| `claude-haiku-4-5` | ~$0.03 | **~$0.80** | cheapest/fastest; usually plenty for this task |
+| `claude-sonnet-5`  | ~$0.05 | **~$1.60** | middle ground |
+| `claude-opus-4-8` (default) | ~$0.13 | **~$4.00** | best phrasing |
+
+Figures are estimates (token counts vary by task size and tokenizer); there's no
+prompt caching, so each generation pays full input.
+
+## Where things are stored
+
+- `decks/D<d>/<d>.<t>.json` — the generated cards for a task (reused until you
+  reset).
+- `logs/D<d>/<d>.<t>/<YYYYMMDD_HHMMSS>.json` — one file per study session, with
+  the questions/answers, per-attempt score, the cards missed on each attempt,
+  and how many attempts it took to reach 100 %.
+
+## Notes
+
+- Card generation reads **all** PDFs for the selected task via `pdftotext`.
+- The API call uses stdlib `urllib` with structured JSON output — no dependencies.
+  If you later want retries/streaming, swap `call_claude()` for the official
+  `anthropic` SDK (`pip install anthropic`); it's a small, localized change.

@@ -1,0 +1,84 @@
+{
+  "domain": 4,
+  "task": "4.6",
+  "label": "Design multi instance and multi pass review architectures",
+  "started_at": "2026-09-02T22:25:44",
+  "model": "claude-opus-4-8",
+  "deck_generated_at": "2026-09-02T22:12:18",
+  "cards": [
+    {
+      "front": "Why is self-review (same instance reviewing its own output) structurally unreliable?",
+      "back": "The model already agreed with its own content under a particular reasoning path. Re-examining it in the same conversation produces confirmatory rather than adversarial review. The problem is coherence, not laziness."
+    },
+    {
+      "front": "What are the three reasons self-review fails?",
+      "back": "1) Shared context bias — reviewer sees prior reasoning and treats it as justification rather than evidence to challenge. 2) Conversation-level anchoring — earlier messages pull on later ones. 3) No independent prior — a self-reviewer cannot manufacture ignorance of what it just wrote."
+    },
+    {
+      "front": "What is the architectural response to unreliable self-review?",
+      "back": "Separate authorship from review at the API-call level. Independent review instances are distinct messages.create calls with no shared conversation history and no access to the original reasoning context — they receive only the artifact, not the process that produced it."
+    },
+    {
+      "front": "What are the three passes in a multi-pass review pipeline?",
+      "back": "1) Per-file analysis pass — each file reviewed in isolation by a dedicated instance. 2) Cross-file integration pass — instances receive file pairs/clusters plus per-file findings to spot issues visible only across components. 3) Final synthesis pass — one aggregating instance deduplicates, prioritizes, and produces an actionable summary from findings only."
+    },
+    {
+      "front": "What does the final synthesis pass work from, and what does it NOT do?",
+      "back": "It receives all findings from prior passes, deduplicates, assigns priorities, and produces an actionable summary. It does NOT re-read the source files — it works from findings only."
+    },
+    {
+      "front": "What are the three split-role reviewers and their exclusive scopes?",
+      "back": "Security reviewer (injection, auth bypass, secret leakage, unsafe deserialization); Performance reviewer (N+1 queries, unbounded loops, sync I/O on hot path, unnecessary re-renders); Correctness reviewer (logic errors, unhandled edge cases, wrong type assumptions, missing error propagation). Each system prompt contains only its own criteria."
+    },
+    {
+      "front": "Why should each split-role reviewer have an exclusive system prompt?",
+      "back": "If roles share a prompt, each instance tries to cover all concerns, producing redundant overlap and defeating role isolation. Each role needs an exclusive scope definition, including explicit instructions to ignore the other categories. Findings are then tagged by role so they can be routed to the right team."
+    },
+    {
+      "front": "Common mistake: What happens if you pass the original conversation history to a review instance?",
+      "back": "The reviewer inherits the same anchoring bias as a self-review because it can see the messages that produced the artifact. Always start review calls with a clean messages array."
+    },
+    {
+      "front": "Common mistake: Why keep per-file and cross-file passes in separate instances?",
+      "back": "Running a single large-context review over many files degrades attention on individual files and defeats per-file scoping. Keeping passes separate keeps context windows small, parallelizes naturally, and ensures no single instance both generates and validates a conclusion."
+    },
+    {
+      "front": "What is the 4.6 domain mental model (three key maxims)?",
+      "back": "Independent instances beat self-review. Narrow scope beats omnibus review. Findings beat re-reading."
+    }
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "scope": "all",
+      "pct_correct": 0.0,
+      "missed": [
+        "Why is self-review (same instance reviewing its own output) structurally unreliable?",
+        "What are the three reasons self-review fails?",
+        "What is the architectural response to unreliable self-review?",
+        "What are the three passes in a multi-pass review pipeline?",
+        "What does the final synthesis pass work from, and what does it NOT do?",
+        "What are the three split-role reviewers and their exclusive scopes?",
+        "Why should each split-role reviewer have an exclusive system prompt?",
+        "Common mistake: What happens if you pass the original conversation history to a review instance?",
+        "Common mistake: Why keep per-file and cross-file passes in separate instances?",
+        "What is the 4.6 domain mental model (three key maxims)?"
+      ]
+    },
+    {
+      "attempt": 2,
+      "scope": "missed",
+      "pct_correct": 90.0,
+      "missed": [
+        "What is the 4.6 domain mental model (three key maxims)?"
+      ]
+    },
+    {
+      "attempt": 3,
+      "scope": "missed",
+      "pct_correct": 100.0,
+      "missed": []
+    }
+  ],
+  "attempts_to_100": 3
+}

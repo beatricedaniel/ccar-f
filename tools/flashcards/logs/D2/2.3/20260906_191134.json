@@ -1,0 +1,70 @@
+{
+  "domain": 2,
+  "task": "2.3",
+  "label": "Distribute tools appropriately across agents and configure tool choice",
+  "started_at": "2026-09-06T19:11:34",
+  "model": "claude-opus-4-8",
+  "deck_generated_at": "2026-09-06T19:02:30",
+  "cards": [
+    {
+      "front": "What is 'scoped tool access' and what principle does it apply to agents?",
+      "back": "Scoped tool access is the principle of least privilege applied to agents: each agent receives only the tools it needs for its specific responsibility, and nothing more. A read-only research subagent should never hold a delete_record or send_email tool."
+    },
+    {
+      "front": "What is the pattern for distributing tools across agents, and why is it the only reliable enforcement boundary?",
+      "back": "Define tools globally in your application, then pass a filtered subset when constructing each subagent's tools array. The model has no awareness of tools not listed in its request, so it cannot be tricked into calling them — this is the only reliable enforcement boundary."
+    },
+    {
+      "front": "What does tool_choice: { type: \"auto\" } do, and when should you use it?",
+      "back": "Claude decides whether to call a tool or respond with text. It's the default and the right choice for most conversational agents — the model uses tools when it judges them necessary."
+    },
+    {
+      "front": "What does tool_choice: { type: \"any\" } do, and when should you use it?",
+      "back": "Claude must call at least one tool from the list but chooses which one. Use it when a tool call is always required in a step — for example, a logging step where every response must be recorded before returning."
+    },
+    {
+      "front": "What does tool_choice: { type: \"tool\", name: \"...\" } do, and when is it most valuable?",
+      "back": "Claude must call exactly the named tool, forcing deterministic behaviour. It's most valuable at the START of a workflow when you need a guaranteed structured output (e.g., always run validate_input or plan_subtasks) before the rest of the system can proceed."
+    },
+    {
+      "front": "After a forced tool step (type: \"tool\") resolves, what should you do for subsequent turns?",
+      "back": "Switch back to auto so the agent can reason freely for the remainder of the agentic loop. Leaving type:\"tool\" in place for later turns prevents the model from adapting — this is a common mistake."
+    },
+    {
+      "front": "In the Agent SDK, what does allowedTools do and how does it relate to global tool filtering?",
+      "back": "allowedTools in subagent configuration serves the same scoping purpose at the SDK abstraction layer. The underlying mechanism is identical (only listed tools reach the API request), but allowedTools makes the intent explicit and keeps tool filtering co-located with subagent definitions rather than scattered across call sites."
+    },
+    {
+      "front": "Why does giving every agent every tool degrade behavior?",
+      "back": "Two problems: (1) the model spends inference budget disambiguating irrelevant options, degrading response quality; and (2) with a long tools list, the model is more likely to call a plausible-looking but wrong tool, especially under ambiguous instructions. Narrow tool sets produce sharper, more predictable behaviour."
+    },
+    {
+      "front": "What's the key difference between tool_choice type:\"any\" and type:\"auto\", and what's the trap?",
+      "back": "auto means 'use a tool if you judge it necessary'; any means 'you must use a tool — pick one.' The trap: using auto when you need a guaranteed tool call (like a logging step) silently allows the model to skip it. Use any when a tool call is a hard contract of that turn."
+    },
+    {
+      "front": "In Claude Code subagents, what do the tools and disallowedTools frontmatter fields do, and how are they resolved together?",
+      "back": "tools acts as an allowlist of tools the subagent can use; disallowedTools acts as a denylist removed from the inherited or specified list. If both are set, disallowedTools is applied first, then tools is resolved against the remaining pool; a tool listed in both is removed."
+    }
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "scope": "all",
+      "pct_correct": 0.0,
+      "missed": [
+        "What is 'scoped tool access' and what principle does it apply to agents?",
+        "What is the pattern for distributing tools across agents, and why is it the only reliable enforcement boundary?",
+        "What does tool_choice: { type: \"auto\" } do, and when should you use it?",
+        "What does tool_choice: { type: \"any\" } do, and when should you use it?",
+        "What does tool_choice: { type: \"tool\", name: \"...\" } do, and when is it most valuable?",
+        "After a forced tool step (type: \"tool\") resolves, what should you do for subsequent turns?",
+        "In the Agent SDK, what does allowedTools do and how does it relate to global tool filtering?",
+        "Why does giving every agent every tool degrade behavior?",
+        "What's the key difference between tool_choice type:\"any\" and type:\"auto\", and what's the trap?",
+        "In Claude Code subagents, what do the tools and disallowedTools frontmatter fields do, and how are they resolved together?"
+      ]
+    }
+  ],
+  "attempts_to_100": null
+}

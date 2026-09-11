@@ -1,0 +1,74 @@
+{
+  "title": "Building a Calendar-Management Agent: From Single Tool Call to Production Agent",
+  "summary": "This tutorial teaches how to build a calendar-management agent by progressively adding complexity through five concentric rings of code. Starting with a single tool call in one turn, the tutorial evolves through implementing an agentic loop, adding multiple tools with parallel execution, handling tool errors, and finally abstracting the entire pattern into the Tool Runner SDK. By the end, learners understand the complete tool-use protocol—including tool_use blocks, tool_result blocks, stop_reason checking, and error signaling—and can build production-ready agents that orchestrate multiple tools, recover from failures, and manage conversation history.",
+  "steps": [
+    {
+      "title": "Understanding Tool Definitions and Single-Turn Tool Use",
+      "explanation": "A tool is defined as a JSON Schema object that tells Claude what parameters a function accepts and what they mean. The schema includes the tool name, description, and input_schema with properties like nested objects (recurrence), arrays (attendees), and optional fields. Claude reads this schema, decides whether to call the tool based on the user request, and returns a response with stop_reason 'tool_use' containing a tool_use block with the tool name, unique id, and structured input. This is the foundation of agentic tool use: Claude interprets natural language and generates structured tool calls. (Domain D2: Tool Design & MCP Integration—tool schemas define the contract between Claude and your system.)",
+      "code": "tools = [\n    {\n        \"name\": \"create_calendar_event\",\n        \"description\": \"Create a calendar event with attendees and optional recurrence.\",\n        \"input_schema\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"title\": {\"type\": \"string\"},\n                \"start\": {\"type\": \"string\", \"format\": \"date-time\"},\n                \"end\": {\"type\": \"string\", \"format\": \"date-time\"},\n                \"attendees\": {\"type\": \"array\", \"items\": {\"type\": \"string\", \"format\": \"email\"}},\n                \"recurrence\": {\"type\": \"object\", \"properties\": {\"frequency\": {\"enum\": [\"daily\", \"weekly\", \"monthly\"]}, \"count\": {\"type\": \"integer\", \"minimum\": 1}}}\n            },\n            \"required\": [\"title\", \"start\", \"end\"]\n        }\n    }\n]",
+      "question": "Why does the tool schema include nested objects and arrays instead of just a single string parameter?",
+      "answer": "Nested objects and arrays allow Claude to understand realistic, structured input shapes. The recurrence object and attendees array enable Claude to make intelligent decisions about complex scheduling tasks rather than forcing everything into flat strings, making the tool more expressive and closer to real-world APIs.",
+      "domain": "D2"
+    },
+    {
+      "title": "Executing Tools and Closing the Single Turn",
+      "explanation": "After Claude generates a tool_use block, your code extracts it from the response content, runs the tool with the provided input, and sends the result back in a tool_result block whose tool_use_id must match the id from the call. This matching ensures Claude knows which result belongs to which request. Once you send the tool result, Claude processes it and generates a final natural-language response with stop_reason 'end_turn'. This completes one full round of the tool-use protocol: request → tool call → execution → result → response.",
+      "code": "tool_use = next(block for block in response.content if block.type == \"tool_use\")\nprint(f\"Tool: {tool_use.name}\")\nprint(f\"Input: {tool_use.input}\")\n\nresult = {\"event_id\": \"evt_123\", \"status\": \"created\"}\n\nfollowup = client.messages.create(\n    model=\"claude-opus-5\",\n    max_tokens=1024,\n    tools=tools,\n    messages=[\n        {\"role\": \"user\", \"content\": \"Schedule a 30-minute sync...\"},\n        {\"role\": \"assistant\", \"content\": response.content},\n        {\"role\": \"user\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": tool_use.id, \"content\": json.dumps(result)}]}\n    ]\n)",
+      "question": "What happens if the tool_use_id in your tool_result block doesn't match the id from Claude's tool_use block?",
+      "answer": "Claude cannot correlate the result with the request, breaking the protocol. The matching ensures Claude knows which result belongs to which tool call, especially important when handling multiple parallel calls.",
+      "domain": "D1"
+    },
+    {
+      "title": "Implementing the Agentic Loop for Multi-Step Tasks",
+      "explanation": "Real tasks often require multiple tool calls in sequence. Instead of assuming Claude will call a tool exactly once, implement a while loop that keeps running while stop_reason equals 'tool_use'. After each tool execution, append the assistant's response and the tool_result to a running messages list, then ask Claude to continue. This loop pattern—check stop_reason, execute tools, append to history, repeat—is the core of agentic orchestration. (Domain D1: Agentic Architecture & Orchestration—the loop is the fundamental control structure for multi-turn agent behavior.)",
+      "code": "messages = [{\"role\": \"user\", \"content\": \"Schedule a weekly team standup...\"}]\n\nresponse = client.messages.create(\n    model=\"claude-opus-5\",\n    max_tokens=1024,\n    tools=tools,\n    messages=messages\n)\n\nwhile response.stop_reason == \"tool_use\":\n    tool_use = next(block for block in response.content if block.type == \"tool_use\")\n    result = run_tool(tool_use.name, tool_use.input)\n    \n    messages.append({\"role\": \"assistant\", \"content\": response.content})\n    messages.append({\"role\": \"user\", \"content\": [{\"type\": \"tool_result\", \"tool_use_id\": tool_use.id, \"content\": json.dumps(result)}]})\n    \n    response = client.messages.create(\n        model=\"claude-opus-5\",\n        max_tokens=1024,\n        tools=tools,\n        messages=messages\n    )",
+      "question": "Why is it important to maintain a running messages list instead of rebuilding it from scratch on each request?",
+      "answer": "The running messages list preserves the full conversation history so each turn sees prior context. This allows Claude to reason about what it has already done, avoid redundant work, and make coherent multi-step decisions based on the entire interaction history.",
+      "domain": "D1"
+    },
+    {
+      "title": "Adding Multiple Tools and Handling Parallel Calls",
+      "explanation": "Agents need multiple capabilities. Add a second tool like list_calendar_events so Claude can check the schedule before creating events. When Claude has multiple independent tool calls to make, it may return several tool_use blocks in a single response. Your loop must iterate over all blocks in response.content, not just the first one, execute all of them, and send back all results together in one user message. This parallelism lets Claude work more efficiently. (Domain D2: Tool Design & MCP Integration—multiple tools require careful orchestration of parallel execution.)",
+      "code": "tools = [\n    {\"name\": \"create_calendar_event\", ...},\n    {\"name\": \"list_calendar_events\", \"description\": \"List all calendar events on a given date.\", \"input_schema\": {\"type\": \"object\", \"properties\": {\"date\": {\"type\": \"string\", \"format\": \"date\"}}, \"required\": [\"date\"]}}\n]\n\nwhile response.stop_reason == \"tool_use\":\n    tool_results = []\n    for block in response.content:\n        if block.type == \"tool_use\":\n            result = run_tool(block.name, block.input)\n            tool_results.append({\"type\": \"tool_result\", \"tool_use_id\": block.id, \"content\": json.dumps(result)})\n    \n    messages.append({\"role\": \"assistant\", \"content\": response.content})\n    messages.append({\"role\": \"user\", \"content\": tool_results})",
+      "question": "Why must you iterate over all tool_use blocks in response.content instead of assuming there is only one?",
+      "answer": "Claude may decide to make multiple independent tool calls in parallel when they don't depend on each other. Iterating over all blocks ensures you execute all of them and send back all results together, allowing Claude to reason about the combined output.",
+      "domain": "D2"
+    },
+    {
+      "title": "Implementing Error Handling with is_error Flag",
+      "explanation": "Tools fail in production: a calendar API might reject too many attendees, dates might be malformed, or services might be unavailable. When a tool raises an error, wrap it in a try-except block and send the error message back with is_error: true instead of crashing. Claude reads the is_error flag and the error text, then can retry with corrected input, ask the user for clarification, or explain the limitation. This keeps the agent resilient and provides Claude with the information it needs to handle failures gracefully. (Domain D1: Agentic Architecture & Orchestration—robust error handling is essential for production agents.)",
+      "code": "try:\n    result = run_tool(block.name, block.input)\n    tool_results.append({\"type\": \"tool_result\", \"tool_use_id\": block.id, \"content\": json.dumps(result)})\nexcept Exception as exc:\n    tool_results.append({\"type\": \"tool_result\", \"tool_use_id\": block.id, \"content\": str(exc), \"is_error\": True})",
+      "question": "What does the is_error: true flag tell Claude, and how should it respond?",
+      "answer": "The is_error: true flag signals that the tool call failed. Claude should interpret the error message and decide whether to retry with different input, ask the user for clarification, or explain why the task cannot be completed.",
+      "domain": "D1"
+    },
+    {
+      "title": "Understanding Tool Execution as a Stateful Service",
+      "explanation": "In Rings 1-4, you wrote the agentic loop by hand. But this loop is the same every time: call the API, check stop_reason, run tools, append results, repeat. The Tool Runner SDK abstracts this pattern away. Instead of manually orchestrating the loop, you define tools as Python functions decorated with @beta_tool, pass them to client.beta.messages.tool_runner, and call until_done() to retrieve the final message. The SDK handles schema derivation, error wrapping, result formatting, and conversation management internally. This reduces cognitive load and makes the intent clearer. (Domain D3: Claude Code Configuration & Workflows—the Tool Runner is a configuration abstraction that simplifies agent setup.)",
+      "code": "@beta_tool\ndef create_calendar_event(title: str, start: str, end: str, attendees: list[str] | None = None, recurrence: dict | None = None) -> str:\n    \"\"\"Create a calendar event with attendees and optional recurrence.\"\"\"\n    if attendees and len(attendees) > 10:\n        raise ValueError(\"Too many attendees (max 10)\")\n    return json.dumps({\"event_id\": \"evt_123\", \"status\": \"created\", \"title\": title})\n\nfinal_message = client.beta.messages.tool_runner(\n    model=\"claude-opus-5\",\n    max_tokens=1024,\n    tools=[create_calendar_event, list_calendar_events],\n    messages=[{\"role\": \"user\", \"content\": \"Check what I have next Monday, then schedule a planning session that avoids any conflicts.\"}]\n).until_done()",
+      "question": "How does the @beta_tool decorator simplify tool definition compared to manually writing JSON schemas?",
+      "answer": "The @beta_tool decorator automatically derives the input schema from the function signature, type hints, and docstring. This keeps the tool definition in one place and eliminates the need to write and maintain separate JSON schema objects.",
+      "domain": "D3"
+    },
+    {
+      "title": "Recognizing When to Use the Manual Loop vs. the Tool Runner",
+      "explanation": "The manual agentic loop (Rings 2-4) gives you explicit control over each step—you can log, modify, or add custom logic between turns. The Tool Runner (Ring 5) is cleaner and more concise for straightforward use cases. Choose the manual loop when you need fine-grained control over the orchestration, error handling, or result processing. Choose the Tool Runner for simpler agents where the default behavior suffices. Both patterns use the same underlying protocol; the Tool Runner is just a convenience wrapper. Understanding both helps you decide what level of abstraction is right for your task.",
+      "code": "",
+      "question": "When should you implement the manual agentic loop instead of using the Tool Runner SDK?",
+      "answer": "Use the manual loop when you need explicit control over orchestration, custom logging, result modification between turns, or special error handling that the Tool Runner's defaults don't support. Use the Tool Runner for simpler agents where the default behavior is sufficient.",
+      "domain": "D1"
+    },
+    {
+      "title": "Synthesizing the Complete Tool-Use Protocol",
+      "explanation": "By the end of the tutorial, you have seen every piece of the tool-use protocol in action: (1) tool_use blocks containing the tool name, id, and structured input from Claude; (2) tool_result blocks containing the execution result or error message, matched by tool_use_id; (3) stop_reason checking to determine when to run tools vs. when to stop; (4) is_error flags to signal failures; (5) parallel tool execution when multiple calls don't depend on each other; (6) conversation history management to maintain context. These elements work together to enable multi-step, multi-tool orchestration. Mastering this protocol is the foundation for building production agents. (Domain D1: Agentic Architecture & Orchestration—these protocol elements form the core of robust agent design.)",
+      "code": "",
+      "question": "What are the five key elements of the tool-use protocol demonstrated across all five rings?",
+      "answer": "(1) tool_use blocks with name, id, and input; (2) tool_result blocks with matching tool_use_id and is_error flag; (3) stop_reason checking to know when to execute tools; (4) parallel execution of multiple independent tool calls; (5) conversation history management so Claude maintains context across turns.",
+      "domain": "D1"
+    }
+  ],
+  "source": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/build-a-tool-using-agent",
+  "host": "platform.claude.com",
+  "model": "claude-haiku-4-5",
+  "generated_at": "2026-08-31T18:01:02"
+}

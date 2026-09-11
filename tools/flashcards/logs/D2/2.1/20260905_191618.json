@@ -1,0 +1,70 @@
+{
+  "domain": 2,
+  "task": "2.1",
+  "label": "Design effective tool interfaces with clear descriptions and boundaries",
+  "started_at": "2026-09-05T19:16:18",
+  "model": "claude-opus-4-8",
+  "deck_generated_at": "2026-09-05T18:57:45",
+  "cards": [
+    {
+      "front": "When deciding which tool to call, what information does Claude have access to?",
+      "back": "Only the name, description, and parameter schema you provide. Claude has no access to your implementation, intent, or mental model — design descriptions like API docs for someone who can't ask follow-up questions."
+    },
+    {
+      "front": "What three questions must a tool description answer unambiguously?",
+      "back": "1) What does this tool do? (purpose, not implementation) 2) When should it be used? (the trigger/condition) 3) What does it NOT do? (its explicit boundary). The third is often omitted but most important for disambiguation."
+    },
+    {
+      "front": "How does Claude select which tool to call, and why does a vague description hurt?",
+      "back": "Claude matches the user's goal against the semantic content of each description. A vague description causes Claude to guess; a precise one causes correct selection every time."
+    },
+    {
+      "front": "When two tools handle related but distinct concerns, how should their descriptions be written?",
+      "back": "Make the distinction explicit — even if it feels redundant. E.g., 'get_user_by_id: retrieve a single user by exact UUID' vs. 'search_users: search by name/email/role, returns a list.' Include 'Do NOT use this for X' boundaries."
+    },
+    {
+      "front": "List the conditions that indicate you should SPLIT one tool into multiple tools.",
+      "back": "Split when: two actions have different preconditions or risk profiles (read vs. write); conflating requires complex parameter logic (mode: get|search); or one action is safe to call speculatively while the other has side effects."
+    },
+    {
+      "front": "List the conditions that indicate you should CONSOLIDATE operations into one tool.",
+      "back": "Consolidate when: operations are always performed together with no independent use; splitting creates artificial back-and-forth (two round-trips for one logical step); or the distinction would only confuse routing without improving precision."
+    },
+    {
+      "front": "Why is a mode/action parameter (e.g. action: 'get' | 'list' | 'delete') an exam trap?",
+      "back": "It's a strong signal the tool should be split. A mode parameter switching between fundamentally different behaviors turns one tool into several with a single confusing entry point — each action should get its own description and selection logic."
+    },
+    {
+      "front": "What are the best practices for parameter naming and schema design in tool interfaces?",
+      "back": "Name parameters for their semantic role, not data type (userId not id, startDate not date1); state expected format in the description ('ISO 8601 date, e.g. 2024-01-15'); mark optional params and explain omission effects; enumerate valid values inline when the set is small and fixed."
+    },
+    {
+      "front": "Why is 'leaking implementation details' in a tool description a common mistake?",
+      "back": "Descriptions like 'calls the /v2/invoices/{id} endpoint' describe the mechanism, not the purpose. Claude needs semantic meaning to select correctly, not internal implementation details."
+    },
+    {
+      "front": "What is the danger of over-consolidating read and write operations into one tool?",
+      "back": "Claude cannot reliably distinguish safe from destructive calls when they share a single description. Combining read/write just because they touch the same resource makes it impossible to route safely — split them so each has its own boundary."
+    }
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "scope": "all",
+      "pct_correct": 0.0,
+      "missed": [
+        "When deciding which tool to call, what information does Claude have access to?",
+        "What three questions must a tool description answer unambiguously?",
+        "How does Claude select which tool to call, and why does a vague description hurt?",
+        "When two tools handle related but distinct concerns, how should their descriptions be written?",
+        "List the conditions that indicate you should SPLIT one tool into multiple tools.",
+        "List the conditions that indicate you should CONSOLIDATE operations into one tool.",
+        "Why is a mode/action parameter (e.g. action: 'get' | 'list' | 'delete') an exam trap?",
+        "What are the best practices for parameter naming and schema design in tool interfaces?",
+        "Why is 'leaking implementation details' in a tool description a common mistake?",
+        "What is the danger of over-consolidating read and write operations into one tool?"
+      ]
+    }
+  ],
+  "attempts_to_100": null
+}

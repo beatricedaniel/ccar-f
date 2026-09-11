@@ -1,0 +1,70 @@
+{
+  "domain": 2,
+  "task": "2.2",
+  "label": "Implement structured error responses for mcp tools",
+  "started_at": "2026-09-06T18:02:32",
+  "model": "claude-opus-4-8",
+  "deck_generated_at": "2026-09-05T19:16:39",
+  "cards": [
+    {
+      "front": "In MCP, what mechanism signals that a tool call failed while still returning a valid, parseable result?",
+      "back": "The isError flag on the tool result. Setting isError: true tells the model the call did not succeed, but the response is still a structured result — not an uncaught exception."
+    },
+    {
+      "front": "What are the four standard MCP tool error categories and their retryability?",
+      "back": "validation (No — fix the input), auth (No — escalate to user), not_found (No — verify the identifier), and rate_limit (Yes — wait and retry)."
+    },
+    {
+      "front": "What distinguishes a retryable error from a non-retryable one in MCP tools?",
+      "back": "Non-retryable errors will produce the same failure if retried with the same inputs (validation, auth, not_found); the model should stop and explain. Retryable errors are transient (rate limits, network timeouts) and may succeed on retry after a delay."
+    },
+    {
+      "front": "What metadata hint should you include with a retryable MCP error, and why?",
+      "back": "Include a retryAfterMs field in the details/metadata giving concrete milliseconds to wait before retrying, so the model has a definite wait target instead of guessing."
+    },
+    {
+      "front": "What fields belong in the structured details object of an MCP error response?",
+      "back": "field (which input parameter caused a validation failure), resource (the identifier not found), retryAfterMs (ms to wait before retry), and scope (the missing permission scope for auth errors)."
+    },
+    {
+      "front": "Why should you never include raw stack traces in MCP error responses?",
+      "back": "Stack traces leak internal implementation details, are not actionable for a language model, and may expose sensitive path or dependency information to the caller. Sanitize errors before returning them."
+    },
+    {
+      "front": "What consistent envelope pattern should MCP success and error responses follow?",
+      "back": "Use a consistent shape: always include an error object on failure and always omit it on success. Mixing shapes (e.g., { data: ... } for success but { message: ... } for error) forces the model to guess which it received."
+    },
+    {
+      "front": "What happens if you omit the retryable field on an MCP error, especially a rate-limit error?",
+      "back": "A missing flag is treated as non-retryable by convention, so rate-limit errors without it cause the model to give up prematurely instead of waiting and retrying."
+    },
+    {
+      "front": "What are the two error-reporting mechanisms in the MCP spec, and which should clients give to the LLM?",
+      "back": "Protocol Errors (JSON-RPC errors like unknown tool or malformed request) that models are less likely to fix, and Tool Execution Errors (isError: true results with actionable feedback). Clients SHOULD provide tool execution errors to the LLM for self-correction; they MAY provide protocol errors."
+    },
+    {
+      "front": "Why is throwing an unhandled exception a common MCP error-handling mistake?",
+      "back": "An uncaught throw terminates the tool call with no structured information, leaving the model unable to recover. You should always catch errors and return them as structured isError responses with a specific message."
+    }
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "scope": "all",
+      "pct_correct": 0.0,
+      "missed": [
+        "In MCP, what mechanism signals that a tool call failed while still returning a valid, parseable result?",
+        "What are the four standard MCP tool error categories and their retryability?",
+        "What distinguishes a retryable error from a non-retryable one in MCP tools?",
+        "What metadata hint should you include with a retryable MCP error, and why?",
+        "What fields belong in the structured details object of an MCP error response?",
+        "Why should you never include raw stack traces in MCP error responses?",
+        "What consistent envelope pattern should MCP success and error responses follow?",
+        "What happens if you omit the retryable field on an MCP error, especially a rate-limit error?",
+        "What are the two error-reporting mechanisms in the MCP spec, and which should clients give to the LLM?",
+        "Why is throwing an unhandled exception a common MCP error-handling mistake?"
+      ]
+    }
+  ],
+  "attempts_to_100": null
+}

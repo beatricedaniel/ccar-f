@@ -1,0 +1,17 @@
+{
+  "title": "Building a Calendar-Management Agent: From Single Tool Call to Production Agent",
+  "source": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/build-a-tool-using-agent",
+  "model": "claude-haiku-4-5",
+  "generated_at": "2026-08-31T18:01:02",
+  "finished_at": "2026-08-31T20:17:19",
+  "steps": [
+    {
+      "title": "Understanding Tool Definitions and Single-Turn Tool Use",
+      "domain": "D2",
+      "marked": "correct"
+    }
+  ],
+  "missed": [],
+  "pct_correct": 100.0,
+  "reviewed": false
+}

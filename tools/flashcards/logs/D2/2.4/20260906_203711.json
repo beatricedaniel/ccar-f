@@ -1,0 +1,70 @@
+{
+  "domain": 2,
+  "task": "2.4",
+  "label": "Integrate mcp servers into claude code and agent workflows",
+  "started_at": "2026-09-06T20:37:11",
+  "model": "claude-opus-4-8",
+  "deck_generated_at": "2026-09-06T19:12:09",
+  "cards": [
+    {
+      "front": "What command adds a remote HTTP MCP server, and which transport is recommended for cloud-based services?",
+      "back": "Use `claude mcp add --transport http <name> <url>`. HTTP is the recommended, most widely supported transport for remote/cloud MCP servers."
+    },
+    {
+      "front": "In .mcp.json, why does a JSON entry with a `url` but no `type` field fail?",
+      "back": "Claude Code reads a typeless entry as a stdio server, so it skips it and reports: MCP server \"<name>\" has a \"url\" but no \"type\"; add \"type\": \"http\" (or \"sse\"/\"ws\"). The `streamable-http` value is accepted as an alias for `http`."
+    },
+    {
+      "front": "For stdio MCP servers, what is the purpose of the `--` (double dash) separator in `claude mcp add`?",
+      "back": "Everything after `--` is the server's own command and args, passed untouched. Without it, Claude Code would try to parse the server's flags (e.g. --port) as its own options. Also place another option between `--env` and the server name so the name isn't read as a KEY=value pair."
+    },
+    {
+      "front": "What are the three MCP installation scopes, where are they stored, and which is the default?",
+      "back": "Local (default): current project only, private, stored in ~/.claude.json. Project: current project, shared via version-controlled .mcp.json at project root. User: all your projects, private, stored in ~/.claude.json. Choose with --scope."
+    },
+    {
+      "front": "What is the scope precedence order when the same MCP server is defined in multiple places?",
+      "back": "Highest to lowest: 1) Local, 2) Project, 3) User, 4) Plugin-provided servers, 5) claude.ai connectors. The entire entry from the highest-precedence source is used (fields are not merged). Scopes match by name; plugins/connectors match by endpoint."
+    },
+    {
+      "front": "How does Claude Code expand environment variables in .mcp.json, and what happens if a referenced variable is unset?",
+      "back": "`${VAR}` expands to the variable's value; `${VAR:-default}` uses a fallback. Expandable in command, args, env, url, and headers. If unset with no default, the config still loads but Claude Code warns and uses the literal `${VAR}` text unexpanded."
+    },
+    {
+      "front": "According to the handout, how do MCP resources fundamentally differ from tools, and why does it matter?",
+      "back": "Resources are read-only, addressable content (by URI) intended for context injection, while tools perform side-effecting actions. Using a tool to return large read-only documents bloats tool-call history and wastes output tokens; expose large context as resources instead."
+    },
+    {
+      "front": "What are MCP resource templates and what RFC do they use?",
+      "back": "Resource templates use RFC 6570 URI templates (e.g. `customers://{id}/profile`) to parameterize access, letting a single declaration cover an unbounded set of resources without enumerating each one. The client resolves the template (e.g. to customers://42/profile) and fetches it."
+    },
+    {
+      "front": "How do you authenticate with a remote OAuth MCP server, and how does Claude Code flag one that needs sign-in?",
+      "back": "Claude Code supports OAuth 2.0. Run `/mcp` and complete the browser login, or use `claude mcp login <name>` from the shell. A server responding with 401 Unauthorized or 403 Forbidden is marked as needing authentication in /mcp; `claude mcp logout <name>` clears credentials."
+    },
+    {
+      "front": "What is MCP tool search, when is it on by default, and how do you exempt a server from deferral?",
+      "back": "Tool search defers tool definitions until Claude needs them, loading only tool names/server instructions at start to keep context low. It's on by default (requires a model supporting tool_reference blocks, e.g. Sonnet/Haiku/Opus 4.5+). Control via ENABLE_TOOL_SEARCH; set `alwaysLoad: true` in a server's config to always load its tools upfront."
+    }
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "scope": "all",
+      "pct_correct": 0.0,
+      "missed": [
+        "What command adds a remote HTTP MCP server, and which transport is recommended for cloud-based services?",
+        "In .mcp.json, why does a JSON entry with a `url` but no `type` field fail?",
+        "For stdio MCP servers, what is the purpose of the `--` (double dash) separator in `claude mcp add`?",
+        "What are the three MCP installation scopes, where are they stored, and which is the default?",
+        "What is the scope precedence order when the same MCP server is defined in multiple places?",
+        "How does Claude Code expand environment variables in .mcp.json, and what happens if a referenced variable is unset?",
+        "According to the handout, how do MCP resources fundamentally differ from tools, and why does it matter?",
+        "What are MCP resource templates and what RFC do they use?",
+        "How do you authenticate with a remote OAuth MCP server, and how does Claude Code flag one that needs sign-in?",
+        "What is MCP tool search, when is it on by default, and how do you exempt a server from deferral?"
+      ]
+    }
+  ],
+  "attempts_to_100": null
+}

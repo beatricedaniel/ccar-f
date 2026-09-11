@@ -1,0 +1,108 @@
+{
+  "exercise": 4,
+  "slug": "multi-agent-research-pipeline",
+  "title": "Design and Debug a Multi-Agent Research Pipeline",
+  "domains": ["D1", "D2", "D5"],
+  "objective": "Practice orchestrating subagents, managing context passing, implementing error propagation, and handling synthesis with provenance tracking.",
+  "overview": "This is the advanced D1 exercise: a coordinator delegating to subagents, which stresses the three things multi-agent systems get wrong — context passing (subagents don't magically inherit what they need), error propagation (a failed subagent must return structured context, not vanish), and synthesis with provenance (combining findings without losing where each came from or flattening genuine conflict). Get these right and you have a research pipeline that degrades gracefully and stays trustworthy.",
+  "steps": [
+    {
+      "n": 1,
+      "title": "Coordinator + subagents with explicit context",
+      "domains": ["D1", "D2"],
+      "task": "Build a coordinator agent that delegates to at least two subagents (e.g., web search and document analysis). Ensure the coordinator's allowedTools includes \"Task\" and that each subagent receives its research findings directly in its prompt rather than relying on automatic context inheritance.",
+      "explain": "In the coordinator/subagent pattern, the coordinator decomposes the goal and delegates via the Task tool (so 'Task' must be in its allowedTools). The critical, frequently-missed point: subagents do NOT automatically inherit the coordinator's conversation context. Each subagent starts fresh, so everything it needs — the question, the relevant findings, the constraints — must be passed explicitly in its prompt. This is the D1 orchestration lesson fused with D5 context management: delegation is only as good as the context you hand down.",
+      "hints": [
+        "The coordinator needs 'Task' in allowedTools to spawn subagents at all — verify that first.",
+        "Treat each subagent as a stateless worker: put the specific findings/inputs it needs into its prompt; don't assume it can see the coordinator's history.",
+        "Give each subagent a narrow, well-scoped job (web search vs document analysis) with only the context and tools relevant to that job."
+      ],
+      "checkpoint": "A subagent returns irrelevant results even though the coordinator 'knew' the key constraint. What's the likely bug, and what's the fix?",
+      "model_answer": "The likely bug is assuming automatic context inheritance — the coordinator knew the constraint, but the subagent was spawned with a prompt that didn't include it, so the stateless subagent never saw it. The fix is explicit context passing: embed the constraint (and any findings the subagent needs) directly in the subagent's prompt when the coordinator emits the Task call. Also confirm 'Task' is in the coordinator's allowedTools so delegation works at all. The principle: subagents start fresh; whatever they must know has to be handed to them explicitly.",
+      "pitfalls": [
+        "Assuming subagents inherit the coordinator's context automatically — they don't.",
+        "Forgetting 'Task' in the coordinator's allowedTools, so it can't delegate.",
+        "Over-broad subagent prompts that dump everything instead of the specific, relevant context — wasting context and blurring the job."
+      ]
+    },
+    {
+      "n": 2,
+      "title": "Parallel subagents in one response",
+      "domains": ["D1"],
+      "task": "Implement parallel subagent execution by having the coordinator emit multiple Task tool calls in a single response. Measure the latency improvement compared to sequential execution.",
+      "explain": "When subtasks are independent, the coordinator can emit multiple Task calls in ONE response and they run concurrently — total latency approaches the slowest single subagent instead of the sum of all of them. This is the same stop_reason/tool_use mechanic as any multi-tool turn, applied to delegation. The judgment: parallelize only genuinely independent subtasks; if subagent B needs A's output, they must be sequential. This is a headline D1 orchestration optimization.",
+      "hints": [
+        "Independent subtasks → emit all their Task calls in a single assistant response so they execute in parallel; dependent subtasks must stay sequential.",
+        "Expected win: wall-clock time drops from ~sum(subagents) toward ~max(subagents).",
+        "Measure both ways (sequential vs parallel) on the same workload to quantify the improvement and confirm correctness is unchanged."
+      ],
+      "checkpoint": "You have three independent web searches and one analysis step that needs all three results. Which run in parallel, which is sequential, and what's the rough latency shape?",
+      "model_answer": "Run the three independent web searches in parallel by emitting their three Task calls in a single response; the analysis step must run afterward, sequentially, because it depends on all three results. Latency shape: the parallel phase takes about as long as the slowest of the three searches (≈max, not sum), then the analysis adds its own time on top — so roughly max(search1, search2, search3) + analysis, versus the sequential search1+search2+search3+analysis. Parallelizing the independent phase is the win; the dependent step can't be collapsed into it.",
+      "pitfalls": [
+        "Parallelizing dependent steps, so a subagent runs before the input it needs exists.",
+        "Emitting Task calls across separate turns (sequential) when they could share one response and run concurrently.",
+        "Claiming a latency win without measuring — or ignoring that parallel fan-out raises peak resource/token usage."
+      ]
+    },
+    {
+      "n": 3,
+      "title": "Structured output separating content from metadata",
+      "domains": ["D2", "D5"],
+      "task": "Design structured output for subagents that separates content from metadata: each finding should include a claim, evidence excerpt, source URL/document name, and publication date. Verify that the synthesis subagent preserves source attribution when combining findings.",
+      "explain": "For synthesis to be trustworthy, each finding must carry its provenance as structured fields — claim, evidence excerpt, source, date — not as prose the next stage has to re-parse. Separating content (the claim) from metadata (where/when it came from) means the synthesis subagent can combine findings while preserving attribution, dedupe by source, and weigh recency. This is D2 structured-output design in service of D5 reliability: provenance survives because it was never entangled with the content.",
+      "hints": [
+        "Model a finding as an object: {claim, evidence_excerpt, source, publication_date} — attribution is data, not narrative.",
+        "Passing structured findings (not prose summaries) between subagents is what lets synthesis keep provenance intact.",
+        "Verify by checking the synthesized output can still name the source and date behind each claim — if it can't, provenance leaked."
+      ],
+      "checkpoint": "Why carry claim, source, and date as separate structured fields instead of letting each subagent return a prose paragraph for the synthesizer to combine?",
+      "model_answer": "Because prose entangles the claim with its provenance, forcing the synthesizer to re-parse (and often lose or mis-attribute) the source and date. Structured fields keep content and metadata separate, so synthesis can combine claims while reliably preserving which source and date each came from, dedupe or reconcile by source, and reason about recency. It also makes verification mechanical — you can check every synthesized claim still points to a source and date. Prose hand-offs are where attribution silently disappears; structured findings are the fix.",
+      "pitfalls": [
+        "Returning prose blobs, forcing lossy re-parsing and dropped attribution downstream.",
+        "Bundling source/date into the claim text instead of as separate fields.",
+        "A synthesis step that summarizes away the provenance it was given — losing traceability."
+      ]
+    },
+    {
+      "n": 4,
+      "title": "Error propagation and partial results",
+      "domains": ["D5", "D1"],
+      "task": "Implement error propagation: simulate a subagent timeout and verify the coordinator receives structured error context (failure type, attempted query, partial results). Test that the coordinator can proceed with partial results and annotate the final output with coverage gaps.",
+      "explain": "A subagent failure must propagate as structured context — failure type, what it attempted, any partial results — not as a silent gap or an opaque crash. Then the coordinator can degrade gracefully: proceed with what succeeded and explicitly annotate the coverage gap ('web search timed out; findings below are document-analysis only'). This mirrors the D2 structured-error lesson at the orchestration layer, and it's the D5 reliability heart of the exercise: honest partial answers beat a hard failure or a falsely-complete one.",
+      "hints": [
+        "On failure, the subagent (or the Task wrapper) should return {failure_type, attempted_query, partial_results} — the coordinator can only reason over what it receives.",
+        "Graceful degradation: continue with partial results rather than aborting the whole pipeline on one subagent's timeout.",
+        "Make the gap visible in the final output ('coverage gap: X was not searched') so the user knows the answer is partial — never present partial as complete."
+      ],
+      "checkpoint": "The web-search subagent times out but document-analysis succeeds. What should the coordinator receive, do, and say in the final report?",
+      "model_answer": "It should receive structured error context from the timed-out subagent: failure_type (timeout), the attempted query, and any partial results gathered before the timeout. It should then proceed with the successful document-analysis findings rather than aborting, and it must annotate the final report with the coverage gap — e.g. 'Web search did not complete (timeout); the following is based on document analysis only.' The key is honesty about scope: degrade gracefully, use partial results, and label the gap so the user doesn't mistake a partial answer for a complete one.",
+      "pitfalls": [
+        "A subagent failure that vanishes silently, leaving an unexplained gap in the output.",
+        "Aborting the whole pipeline on one subagent's timeout instead of using partial results.",
+        "Presenting partial results as if the research were complete — no coverage-gap annotation."
+      ]
+    },
+    {
+      "n": 5,
+      "title": "Synthesize conflicting sources with attribution",
+      "domains": ["D1", "D5"],
+      "task": "Test with conflicting source data (e.g., two credible sources with different statistics) and verify the synthesis output preserves both values with source attribution rather than arbitrarily selecting one, and structures the report to distinguish well-established from contested findings.",
+      "explain": "When credible sources disagree, arbitrarily picking one destroys information and hides uncertainty. Good synthesis preserves BOTH values with their attributions and explicitly marks the point as contested, while structuring the report to separate well-established findings (corroborated) from contested ones. This is the capstone reliability skill: the pipeline's job is to represent the state of the evidence faithfully — including disagreement — not to manufacture false consensus. It depends on the provenance from step 3 and the honesty discipline from step 4.",
+      "hints": [
+        "On conflict, report both figures with their sources and dates and label the claim 'contested' — don't silently choose a winner.",
+        "Structure the report into corroborated/well-established vs contested sections so readers see confidence levels at a glance.",
+        "This only works if provenance survived synthesis (step 3) — you can't attribute a conflict whose sources you've already flattened."
+      ],
+      "checkpoint": "Two reputable sources give different market-size figures. What does a faithful synthesis do, and why is 'pick the more recent one and move on' the wrong default?",
+      "model_answer": "A faithful synthesis presents both figures, each with its source and date, and explicitly flags the market-size claim as contested — then places it in a 'contested findings' section distinct from corroborated ones, so the reader sees the disagreement and can judge it. 'Pick the more recent and move on' is wrong as a default because it silently discards a credible data point, hides real uncertainty, and can be misleading (newer isn't always more authoritative, and the difference may reflect methodology, not time). The pipeline's duty is to represent the evidence — including conflict — not to fabricate a single tidy answer.",
+      "pitfalls": [
+        "Arbitrarily selecting one source and dropping the other, erasing the disagreement.",
+        "Reporting a contested figure with the same confidence as a corroborated one (no separation).",
+        "Losing the attributions needed to even show the conflict — a downstream cost of skipping structured provenance."
+      ]
+    }
+  ],
+  "wrap_up": "This exercise concentrates the hardest D1 multi-agent lessons: explicit context passing (subagents don't inherit context), parallel delegation for latency (max not sum), structured findings that carry provenance, error propagation with graceful degradation and coverage-gap annotation, and conflict-preserving synthesis. The unifying reliability theme (D5): a multi-agent system must be honest about scope and uncertainty — pass what's needed, surface what failed, and represent disagreement rather than flattening it. For the exam, be ready to spot the 'assumed automatic context inheritance' bug and to explain why partial, attributed, conflict-aware output beats a falsely-complete one.",
+  "authored_by": "claude-code (Opus 4.8)",
+  "generated_at": "2026-09-03"
+}

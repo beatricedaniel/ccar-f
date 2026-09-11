@@ -1,0 +1,38 @@
+{
+  "source_version": "0.1.13",
+  "source_dir": "/Users/beatrice/Documents/wip/CCAR-F/tools/connectrylab-architect-cert-mcp/src/data",
+  "synced_at": "2026-09-04T18:10:13",
+  "total_questions": 390,
+  "files": {
+    "domain-1.json": {
+      "sha256": "56eb26cafaa8da6d8cac9f389270dcd18cb879049390e996ac7dba388550450c",
+      "bytes": 210309,
+      "questions": 91
+    },
+    "domain-2.json": {
+      "sha256": "f1fcfb423cd072f9a204105eb970635600041b63e212e8e0e13ce52fc82e4e8b",
+      "bytes": 155009,
+      "questions": 65
+    },
+    "domain-3.json": {
+      "sha256": "5dcb03831b9cd0f4ed96e669b3c305652662d604cafd70f386def0b218f112bd",
+      "bytes": 181335,
+      "questions": 78
+    },
+    "domain-4.json": {
+      "sha256": "ad0fea9134c3e07eca59f0ac9296d3fa4c47849b5ce6e417b750b1c0a7992c32",
+      "bytes": 178324,
+      "questions": 78
+    },
+    "domain-5.json": {
+      "sha256": "441bdf1179faae8fa32a22c4e045aefcf6db3fb0be4a607bc54da4dbe8b205e9",
+      "bytes": 192191,
+      "questions": 78
+    },
+    "curriculum.json": {
+      "sha256": "c3dfd7bf16bca4850d8f5da84520a55ad8e3d33043995e3549683360cd0705a7",
+      "bytes": 10099,
+      "questions": 0
+    }
+  }
+}

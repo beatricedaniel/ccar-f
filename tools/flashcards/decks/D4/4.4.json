@@ -1,0 +1,54 @@
+{
+  "domain": 4,
+  "task": "4.4",
+  "label": "Implement validation retry and feedback loops",
+  "model": "claude-opus-4-8",
+  "generated_at": "2026-09-02T18:24:59",
+  "source_pdfs": [
+    "4.4-implement-validation-retry-and-feedback-loops.pdf",
+    "4.4-reduce-hallucinations.pdf",
+    "4.4-zod.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What is the validation-retry pattern in agentic systems?",
+      "back": "A pattern that treats model output as an unverified claim: validate it against a schema/rules, and if it fails, retry with a prompt that includes a precise description of what went wrong."
+    },
+    {
+      "front": "What is the critical difference between naive retry and retry-with-error-feedback?",
+      "back": "Naive retry resends the original prompt without error context (a coin flip that may reproduce the same output). Retry-with-error-feedback includes the invalid output and the exact validation failure, giving the model a concrete problem to correct."
+    },
+    {
+      "front": "In the validation-retry loop, what must a retry prompt (step 4) include when validation fails?",
+      "back": "The original task, the invalid output, and a precise description of the validation failure."
+    },
+    {
+      "front": "Why must every retry loop have a hard maxAttempts limit?",
+      "back": "Unbounded retries are a denial-of-service vector against your own system—they can exhaust the token budget or trigger rate limits. Beyond the budget you should fail explicitly rather than silently degrade."
+    },
+    {
+      "front": "After about three failed attempts with specific feedback, what three root causes are usually to blame?",
+      "back": "1) The schema is too strict or contradicts the task; 2) the task prompt is ambiguous in a way that causes the same class of error; 3) the required output format is outside the model's capability for that input. The right response is to surface the failure, not retry indefinitely."
+    },
+    {
+      "front": "What is the purpose of the detected_pattern field in the retry state?",
+      "back": "It accumulates error-type counts (error category → occurrence count) across attempts. When a category appears more than once, the agent knows the retry strategy is not converging and can escalate, broaden the schema, simplify the prompt, or route to a fallback."
+    },
+    {
+      "front": "What subtle failure mode does tracking error patterns across retries prevent?",
+      "back": "A loop where each attempt produces a different invalid output, exhausting the attempt budget without ever surfacing a clear root cause. Tracking error types (a fingerprint) across the whole sequence lets recurring error types signal a non-converging strategy."
+    },
+    {
+      "front": "Why should schemas be used for validation, and where should validation occur?",
+      "back": "Schemas define the contract precisely enough that validation errors are machine-readable and force explicit output-format specification before implementation. Validate at the boundary—before the result touches any downstream code. Use Zod (TS) or equivalent."
+    },
+    {
+      "front": "Why is defining the schema AFTER writing the prompt a common mistake?",
+      "back": "It reverse-engineers the schema from observed outputs. The schema is the contract and should be defined first, with the prompt referencing it explicitly."
+    },
+    {
+      "front": "Why should you treat different validation failures as distinct rather than equal?",
+      "back": "A missing optional field and a malformed date are different failure classes needing different corrections. Log error types distinctly; retry prompts that conflate distinct failures produce unfocused corrections."
+    }
+  ]
+}

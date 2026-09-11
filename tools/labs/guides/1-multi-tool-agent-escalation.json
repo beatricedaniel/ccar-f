@@ -1,0 +1,108 @@
+{
+  "exercise": 1,
+  "slug": "multi-tool-agent-escalation",
+  "title": "Build a Multi-Tool Agent with Escalation Logic",
+  "domains": ["D1", "D2", "D5"],
+  "objective": "Practice designing an agentic loop with tool integration, structured error handling, and escalation patterns.",
+  "overview": "This exercise walks the full spine of an agentic system: differentiated tools the model can select correctly, a loop that reacts to stop_reason, tool errors returned as structured data the model can reason about, a deterministic hook that enforces a business rule the model must not be trusted to enforce, and finally request decomposition. It is the single best rehearsal for D1 (orchestration), because every sub-skill the exam tests in isolation appears here as one connected pipeline.",
+  "steps": [
+    {
+      "n": 1,
+      "title": "Define 3-4 differentiated MCP tools",
+      "domains": ["D2"],
+      "task": "Define 3-4 MCP tools with detailed descriptions that clearly differentiate each tool's purpose, expected inputs, and boundary conditions. Include at least two tools with similar functionality that require careful description to avoid selection confusion.",
+      "explain": "Tool selection is driven almost entirely by the description and input schema — Claude reads them like documentation, not just labels. When two tools overlap (e.g. search_orders vs get_order_by_id), the description must state the boundary that separates them: what each is FOR, what inputs it needs, and when NOT to use it. This is the core of D2: a tool spec is a prompt-engineering surface, not just an API signature.",
+      "hints": [
+        "Give each tool a one-line 'Use this when…' and, for the overlapping pair, an explicit 'Do NOT use this when…' that points at the sibling tool.",
+        "Differentiate on inputs too: an exact-lookup tool takes a required id; a search tool takes a free-text query and optional filters. The schema itself signals intent.",
+        "Name and describe by user intent (retrieve one known record vs. discover matching records), not by the underlying endpoint — the model matches on intent."
+      ],
+      "checkpoint": "You have get_order(order_id) and search_orders(query). A user says 'find my order for the blue jacket.' Which tool should Claude pick, and what in your descriptions makes that unambiguous?",
+      "model_answer": "search_orders — there is no id, only descriptive criteria. The descriptions make it unambiguous by stating get_order is for 'retrieving a single order when you already know its exact ID' and search_orders is for 'finding orders by attributes when the ID is unknown,' each with a 'do not use when…' clause pointing at the other. The input schemas reinforce it: get_order requires order_id (absent here), search_orders takes a query string. Selection confusion comes from vague, symmetric descriptions; the fix is asymmetric boundary language plus schemas that only fit one intent.",
+      "pitfalls": [
+        "Relying on tool NAMES to disambiguate while writing near-identical descriptions — the model reads the description.",
+        "Omitting boundary/'do not use' language, so both tools look valid for the same request.",
+        "Over-broad input schemas (everything optional) that let either tool 'fit' any call."
+      ]
+    },
+    {
+      "n": 2,
+      "title": "Drive the loop from stop_reason",
+      "domains": ["D1"],
+      "task": "Implement an agentic loop that checks stop_reason to determine whether to continue tool execution or present the final response. Handle both \"tool_use\" and \"end_turn\" stop reasons correctly.",
+      "explain": "The agentic loop is a state machine keyed on stop_reason. stop_reason == 'tool_use' means Claude has requested one or more tools and is pausing for results — you execute them, append the tool_result blocks, and call again. stop_reason == 'end_turn' means Claude is done — you surface the final text and exit the loop. Confusing these is the classic D1 bug: treating text that accompanies a tool_use as the final answer, or looping forever because you never check for end_turn.",
+      "hints": [
+        "Loop shape: call the API → inspect stop_reason → if 'tool_use', run every tool_use block, append results, continue; if 'end_turn', return the text and stop.",
+        "A single assistant turn can contain BOTH text and multiple tool_use blocks — handle all tool_use blocks before the next call, and don't treat the interim text as final.",
+        "Add a max-iterations guard so a misbehaving model can't loop indefinitely; that guard is a reliability (D5) concern, not just a convenience."
+      ],
+      "checkpoint": "The response has stop_reason 'tool_use', one text block ('Let me check that for you') and two tool_use blocks. What exactly does your loop do next, and what must it NOT do?",
+      "model_answer": "Execute BOTH tool_use blocks (ideally in parallel), append a tool_result for each — matched by tool_use_id — to the message history, then call the model again and re-check stop_reason. It must NOT present 'Let me check that for you' as the final answer, must NOT drop the second tool call, and must NOT exit the loop: stop_reason is tool_use, not end_turn. The final response is only surfaced when a later call returns end_turn.",
+      "pitfalls": [
+        "Treating interim text on a tool_use turn as the final response.",
+        "Handling only the first tool_use block when a turn contains several.",
+        "No termination guard, or exiting on the wrong stop_reason (e.g. stopping on max_tokens without handling it)."
+      ]
+    },
+    {
+      "n": 3,
+      "title": "Return structured, categorized tool errors",
+      "domains": ["D2", "D5"],
+      "task": "Add structured error responses to your tools: include errorCategory (transient/validation/permission), isRetryable boolean, and human-readable descriptions. Test that the agent handles each error type appropriately (retrying transient errors, explaining business errors to the user).",
+      "explain": "A tool that fails should return a structured error the model can reason over, not a raw stack trace or a bare 500. The four categories the exam emphasizes are transient (retry later), validation (fix the inputs and retry), permission (the caller isn't allowed — don't retry, escalate/inform), and business (a rule was violated — explain to the user). errorCategory + isRetryable tell the agent whether to retry, correct-and-retry, or surface the problem. This is the D2 lesson on Structured Error Responses and it directly feeds D5 reliability.",
+      "hints": [
+        "Return errors as a normal tool_result payload (JSON with errorCategory, isRetryable, message), not by throwing — the model can only reason about what it receives as a result.",
+        "Map each category to a policy: transient → retry with backoff (bounded); validation → adjust arguments and retry once; permission → stop and inform/escalate; business → explain the rule to the user, don't retry.",
+        "The human-readable description is for the model to relay to the user; the category/isRetryable fields are for the loop's control logic. Keep both."
+      ],
+      "checkpoint": "A payment tool returns {errorCategory: 'transient', isRetryable: true} once, then {errorCategory: 'permission', isRetryable: false}. What should the agent do in each case, and why does isRetryable matter separately from errorCategory?",
+      "model_answer": "On the transient/isRetryable:true error, retry (with a bounded backoff and a retry cap). On the permission/isRetryable:false error, stop retrying and either escalate or explain to the user that they lack authorization — retrying would waste calls and never succeed. isRetryable is kept separate from errorCategory because retryability is the control signal the loop acts on, while the category explains WHY; some validation errors are retryable after correcting arguments, some aren't, so the boolean lets the agent branch without hard-coding category semantics everywhere.",
+      "pitfalls": [
+        "Throwing exceptions / returning raw 500s the model can't interpret, instead of a structured tool_result.",
+        "Retrying non-retryable errors (permission/business), burning turns and latency.",
+        "Collapsing all failures into one generic 'error' with no category, so the agent can't choose the right recovery."
+      ]
+    },
+    {
+      "n": 4,
+      "title": "Enforce a business rule with a programmatic hook",
+      "domains": ["D1", "D5"],
+      "task": "Implement a programmatic hook that intercepts tool calls to enforce a business rule (e.g., blocking operations above a threshold amount), redirecting to an escalation workflow when triggered.",
+      "explain": "Some rules must be guaranteed, not merely requested. A programmatic hook sits between the model's tool_use request and the actual tool execution: it inspects the arguments and can block, modify, or redirect deterministically — regardless of what the model 'decided.' This is the reliability boundary: the prompt can ask Claude to avoid refunds over $1000, but only a hook makes it impossible. When the rule triggers, you route to an escalation workflow (human approval, a different tool) rather than executing.",
+      "hints": [
+        "The hook runs in YOUR code after you parse the tool_use block and before you call the tool — it's deterministic, not a model instruction.",
+        "On a violation, don't silently drop the call: return a structured result (often a business-category error) so the model can explain the escalation to the user and continue the conversation.",
+        "Escalation = redirect, not dead-end: hand off to a human-approval step or a restricted tool, and make the outcome visible in the tool_result the model sees next."
+      ],
+      "checkpoint": "Why enforce 'refunds over $1000 require manager approval' in a hook rather than in the system prompt? What does the hook return to the model when it blocks?",
+      "model_answer": "A system-prompt instruction is best-effort — the model can be jailbroken, mis-reason, or drift over a long context, so it cannot GUARANTEE the rule. A hook enforces it deterministically in code, so a $1500 refund is blocked 100% of the time regardless of the model's decision. When it blocks, the hook returns a structured tool_result (e.g. errorCategory 'business', isRetryable false, plus a message like 'Refund exceeds $1000; routed to manager approval') so the model can explain the escalation to the user and proceed, rather than retrying or pretending it succeeded.",
+      "pitfalls": [
+        "Putting a hard business/safety rule only in the prompt and trusting the model to obey it.",
+        "Blocking silently, so the model thinks the tool ran and hallucinates a success message.",
+        "Making escalation a dead-end (just an error) instead of routing to an actual approval/alternative path."
+      ]
+    },
+    {
+      "n": 5,
+      "title": "Decompose multi-concern requests and synthesize",
+      "domains": ["D1", "D5"],
+      "task": "Test with multi-concern messages (e.g., requests involving multiple issues) and verify the agent decomposes the request, handles each concern, and synthesizes a unified response.",
+      "explain": "Real requests bundle several asks ('cancel order A, and why was I double-charged on B?'). A robust agent decomposes the message into distinct concerns, addresses each — possibly with different tools and even hitting the escalation hook on one — then synthesizes ONE coherent response rather than answering only the first or the loudest concern. This is the top-of-D1 skill: task decomposition, plus the context-management discipline (D5) of tracking which sub-tasks are done, pending, or blocked.",
+      "hints": [
+        "Identify concerns explicitly (the model can enumerate them) so none is dropped, then track each to a resolution: done, blocked/escalated, or needs-info.",
+        "Different concerns may route differently — one may complete via a tool, another may hit the hook and escalate, a third may need a clarifying question.",
+        "Synthesis means a single unified reply that reports the outcome of EACH concern, including partial results and coverage gaps, not a wall of disconnected tool outputs."
+      ],
+      "checkpoint": "A user writes: 'Cancel order #123, refund the $50 shipping on #124, and tell me your return policy.' The refund trips the escalation hook. What does a well-decomposed, synthesized response look like?",
+      "model_answer": "The agent splits the message into three concerns: (1) cancel #123 — executes the cancel tool and confirms; (2) refund $50 on #124 — attempts it, hits the hook/escalation, so it reports that the refund was routed for approval rather than claiming success; (3) return policy — answers directly. The final response is a single, organized reply addressing all three in turn, clearly stating what succeeded, what is pending approval (with the reason), and the policy answer — so no concern is silently dropped and the user sees the true status of each.",
+      "pitfalls": [
+        "Answering only the first concern and dropping the rest.",
+        "Emitting raw, disconnected tool outputs instead of one synthesized answer.",
+        "Hiding a blocked/escalated concern or reporting it as done — the synthesis must surface partial results and gaps honestly."
+      ]
+    }
+  ],
+  "wrap_up": "You have now connected the whole D1 pipeline: differentiated tools (D2) → a stop_reason-driven loop (D1) → structured, categorized errors (D2/D5) → a deterministic enforcement hook (D1/D5) → decomposition and synthesis (D1). For the exam, remember the two recurring traps: (1) enforcement of hard rules belongs in code (hooks), never in the prompt alone; and (2) errors and multi-concern outcomes must be returned as structured, reasoned-over results, not thrown away. Review Lesson 2.2 (Structured Error Responses) and the four error categories, then re-read how stop_reason gates the loop.",
+  "authored_by": "claude-code (Opus 4.8)",
+  "generated_at": "2026-09-03"
+}

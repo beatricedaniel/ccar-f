@@ -1,0 +1,58 @@
+{
+  "exercise": 3,
+  "slug": "structured-extraction-pipeline",
+  "title": "Build a Structured Data Extraction Pipeline",
+  "domains": [
+    "D4",
+    "D5"
+  ],
+  "started_at": "2026-09-03T22:10:45",
+  "finished_at": "2026-09-03T22:10:45",
+  "guide_generated_at": "2026-09-03",
+  "steps": [
+    {
+      "n": 1,
+      "title": "Schema with nullable fields and enum+other",
+      "domains": [
+        "D4"
+      ],
+      "marked": "got_it"
+    },
+    {
+      "n": 2,
+      "title": "Validation-retry loop with error feedback",
+      "domains": [
+        "D4",
+        "D5"
+      ],
+      "marked": "got_it"
+    },
+    {
+      "n": 3,
+      "title": "Few-shot examples for format robustness",
+      "domains": [
+        "D4"
+      ],
+      "marked": "got_it"
+    },
+    {
+      "n": 4,
+      "title": "Batch 100 docs with failure handling",
+      "domains": [
+        "D5"
+      ],
+      "marked": "got_it"
+    },
+    {
+      "n": 5,
+      "title": "Confidence scores and human-review routing",
+      "domains": [
+        "D5",
+        "D4"
+      ],
+      "marked": "got_it"
+    }
+  ],
+  "revisit": [],
+  "pct_understood": 100.0
+}

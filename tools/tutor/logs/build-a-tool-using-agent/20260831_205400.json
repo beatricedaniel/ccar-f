@@ -1,0 +1,52 @@
+{
+  "title": "Building a Calendar-Management Agent: From Single Tool Call to Production Agent",
+  "source": "https://platform.claude.com/docs/en/agents-and-tools/tool-use/build-a-tool-using-agent",
+  "model": "claude-haiku-4-5",
+  "generated_at": "2026-08-31T18:01:02",
+  "finished_at": "2026-08-31T20:54:00",
+  "steps": [
+    {
+      "title": "Understanding Tool Definitions and Single-Turn Tool Use",
+      "domain": "D2",
+      "marked": "correct"
+    },
+    {
+      "title": "Executing Tools and Closing the Single Turn",
+      "domain": "D1",
+      "marked": "correct"
+    },
+    {
+      "title": "Implementing the Agentic Loop for Multi-Step Tasks",
+      "domain": "D1",
+      "marked": "correct"
+    },
+    {
+      "title": "Adding Multiple Tools and Handling Parallel Calls",
+      "domain": "D2",
+      "marked": "correct"
+    },
+    {
+      "title": "Implementing Error Handling with is_error Flag",
+      "domain": "D1",
+      "marked": "correct"
+    },
+    {
+      "title": "Understanding Tool Execution as a Stateful Service",
+      "domain": "D3",
+      "marked": "correct"
+    },
+    {
+      "title": "Recognizing When to Use the Manual Loop vs. the Tool Runner",
+      "domain": "D1",
+      "marked": "correct"
+    },
+    {
+      "title": "Synthesizing the Complete Tool-Use Protocol",
+      "domain": "D1",
+      "marked": "correct"
+    }
+  ],
+  "missed": [],
+  "pct_correct": 100.0,
+  "reviewed": false
+}

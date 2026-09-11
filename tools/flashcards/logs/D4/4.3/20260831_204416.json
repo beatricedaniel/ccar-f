@@ -1,0 +1,67 @@
+{
+  "domain": 4,
+  "task": "4.3",
+  "label": "Enforce structured output using tool use and json schemas",
+  "started_at": "2026-08-31T20:44:16",
+  "model": "claude-opus-4-8",
+  "deck_generated_at": "2026-08-31T20:29:53",
+  "cards": [
+    {
+      "front": "Why is 'respond in JSON with fields X, Y, Z' a brittle approach for structured output?",
+      "back": "Claude may add explanatory prose, wrap the JSON in markdown fences, or omit optional fields. Downstream code then relies on regex or JSON.parse against free-form text that can change shape with new model versions. The correct approach is to use tool_use as a structured output mechanism."
+    },
+    {
+      "front": "What is the 'data capture contract' pattern for structured output?",
+      "back": "You define a tool whose sole purpose is to receive structured data — it doesn't have to do anything external. Claude fills in parameters per your schema, you capture the tool_use block, and the data arrives already validated against your types. Think of it as 'a typed slot Claude must fill' rather than 'a function Claude can call.'"
+    },
+    {
+      "front": "What are the four values for tool_choice and what does each do?",
+      "back": "auto: Claude decides whether to use any tool (default when tools provided). any: Claude must use one of the tools but not a specific one. tool: forces Claude to always use a particular named tool. none: prevents any tool use (default when no tools provided)."
+    },
+    {
+      "front": "Which tool_choice value guarantees structured output, and what does it look like?",
+      "back": "{ \"type\": \"tool\", \"name\": \"your_capture_tool\" } forces Claude to call exactly that tool, guaranteeing the response contains a tool_use block with your schema populated. The model cannot respond with free text instead."
+    },
+    {
+      "front": "What happens to natural language responses when tool_choice is 'any' or 'tool'?",
+      "back": "The API prefills the assistant message to force a tool to be used, so the model will NOT emit any natural language response or explanation before the tool_use content blocks — even if explicitly asked to do so."
+    },
+    {
+      "front": "How can you get natural language context AND still steer Claude toward a specific tool?",
+      "back": "Use tool_choice: {\"type\": \"auto\"} (the default) and add explicit instructions in a user message, e.g. 'What's the weather like in London? Use the get_weather tool in your response.'"
+    },
+    {
+      "front": "What four JSON Schema design principles are recommended for structured output?",
+      "back": "1) Enum constraints for fixed value sets (prevents invented values). 2) Nullable fields marked explicitly (type ['string','null'] or .nullable()). 3) Required vs. optional — list always-needed fields in required. 4) Descriptions on every field, treated as contracts specifying format, units, and valid ranges."
+    },
+    {
+      "front": "What does strict tool use do, and how do you combine it with tool_choice for guarantees?",
+      "back": "Set strict: true on tool definitions to enable schema validation so tool inputs strictly follow your schema. Combine tool_choice: {\"type\": \"any\"} with strict tools to guarantee both that a tool WILL be called AND that inputs strictly conform to the schema."
+    },
+    {
+      "front": "List the common mistakes when enforcing structured output via tools.",
+      "back": "1) Using tool_choice 'auto' (Claude may respond with plain text). 2) Forgetting nullable on optional fields while asserting presence. 3) Broad string types for constrained values (use z.enum). 4) Skipping schema validation after capture (always safeParse). 5) Writing 'respond in JSON' alongside a schema (redundant/conflicting). 6) Defining one monolithic tool for multiple output types (use separate tools)."
+    },
+    {
+      "front": "What does zodToJsonSchema do and why does the pattern use it?",
+      "back": "It converts Zod schemas into the JSON Schema format the Anthropic API expects (used as the tool's input_schema). This creates a single source of truth: the Zod schema defines both runtime validation and the wire format Claude receives, with TypeScript types flowing via z.infer. (Note: as of Nov 2025 the package is deprecated since Zod v4 natively supports JSON schema generation.)"
+    }
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "scope": "all",
+      "pct_correct": 90.0,
+      "missed": [
+        "What are the four values for tool_choice and what does each do?"
+      ]
+    },
+    {
+      "attempt": 2,
+      "scope": "missed",
+      "pct_correct": 100.0,
+      "missed": []
+    }
+  ],
+  "attempts_to_100": 2
+}

@@ -1,0 +1,78 @@
+{
+  "domain": 4,
+  "task": "4.2",
+  "label": "Apply few shot prompting to improve output consistency",
+  "started_at": "2026-09-03T20:52:14",
+  "model": "claude-opus-4-8",
+  "deck_generated_at": "2026-09-03T20:44:25",
+  "cards": [
+    {
+      "front": "What is few-shot prompting?",
+      "back": "The practice of embedding concrete input→output examples directly in the prompt. Rather than describing what you want abstractly, you demonstrate it, and the model generalises from the examples to handle new inputs in the same style, format, and register."
+    },
+    {
+      "front": "What is the Domain 4 mental model captured in three phrases?",
+      "back": "Specificity beats vagueness. Examples beat instructions. Schemas beat parsing."
+    },
+    {
+      "front": "Why do examples beat instructions for output consistency?",
+      "back": "Instructions describe a rule but leave room for variation (casing, nesting, extra fields, null handling). Examples instantiate the rule unambiguously — a single example eliminates most variance; two or three eliminate almost all of it. The model pattern-matches examples in the context window, not a memorised rulebook."
+    },
+    {
+      "front": "What is the difference between generic and targeted examples?",
+      "back": "Generic examples teach the happy path. Targeted examples teach edge cases you actually care about. Identify the ambiguous or error-prone input space and write examples covering it explicitly. One well-targeted example for a tricky case is worth more than three of the easy case."
+    },
+    {
+      "front": "How many few-shot examples should you use, by scenario?",
+      "back": "1 example establishes format for simple schemas. 2–3 is the practical default (happy path plus a variation). 4–5 for complex output spaces or numerous edge cases. More than 5 is rarely necessary — it adds token cost without benefit. Stop when the model produces correct output on your test inputs."
+    },
+    {
+      "front": "Where should few-shot examples be placed in the system prompt, and why?",
+      "back": "At the end of the system prompt, immediately before the first human turn. This positions them closest to the model's first output, maximising their influence on format (recency). Examples buried in the middle are partially overridden by later instructions. Wrap long examples in clear delimiters like XML tags."
+    },
+    {
+      "front": "In the sarcasm classification example, what three cases do the three examples cover?",
+      "back": "The happy path (clear positive), the ambiguous boundary (neutral hedging/faint language), and the targeted edge case (sarcastic positive phrasing resolving to NEGATIVE). The model handles all three reliably, and the JSON schema is carried entirely by the examples—never described in prose."
+    },
+    {
+      "front": "Why is describing the format in prose AND in examples a mistake?",
+      "back": "Redundancy between instructions and examples creates a potential contradiction if they ever diverge. Let the examples carry the format definition. Add prose instructions only for things that cannot be shown (e.g. 'never include PII in the rationale field')."
+    },
+    {
+      "front": "What is the consequence of using inconsistent example structure?",
+      "back": "If one example uses 'label' and another uses 'classification', you teach the model nothing stable. Every example must follow the exact same schema with the exact same field names and value formats."
+    },
+    {
+      "front": "If output is still inconsistent after several examples, what is likely wrong—and what should you do for high-stakes output?",
+      "back": "The problem is usually a bad, ambiguous, or under-constrained schema; define a strict schema (JSON Schema or TypeScript type) rather than adding more examples. For critical integrations, combine few-shot examples with Claude's native tool-use / structured output feature: few-shot improves consistency, a machine-validated schema enforces it."
+    }
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "scope": "all",
+      "pct_correct": 60.0,
+      "missed": [
+        "What is the Domain 4 mental model captured in three phrases?",
+        "In the sarcasm classification example, what three cases do the three examples cover?",
+        "Why is describing the format in prose AND in examples a mistake?",
+        "If output is still inconsistent after several examples, what is likely wrong—and what should you do for high-stakes output?"
+      ]
+    },
+    {
+      "attempt": 2,
+      "scope": "missed",
+      "pct_correct": 75.0,
+      "missed": [
+        "What is the Domain 4 mental model captured in three phrases?"
+      ]
+    },
+    {
+      "attempt": 3,
+      "scope": "missed",
+      "pct_correct": 100.0,
+      "missed": []
+    }
+  ],
+  "attempts_to_100": 3
+}

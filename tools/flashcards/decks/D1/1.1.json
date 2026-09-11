@@ -1,0 +1,54 @@
+{
+  "domain": 1,
+  "task": "1.1",
+  "label": "Design and implement agentic loops for autonomous task execution",
+  "model": "claude-haiku-4-5",
+  "generated_at": "2026-08-28T18:57:54",
+  "source_pdfs": [
+    "1.1-agentic-loop-stop-reasons.pdf",
+    "1.1-agents.pdf",
+    "1.1-design-and-implement-agentic-loops-for-autonomous-task-execution.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What is the primary mechanism that controls an agentic loop in Claude?",
+      "back": "The stop_reason field in the Messages API response. It tells you why Claude stopped generating and guides what to do next: 'tool_use' means continue the loop by executing tools, and 'end_turn' means the task is complete."
+    },
+    {
+      "front": "What should you do when stop_reason is 'tool_use'?",
+      "back": "Execute the requested tool(s), append the assistant's tool_use block to the messages, then append a user message containing the tool_result blocks. Continue the loop by sending another API request."
+    },
+    {
+      "front": "What should you do when stop_reason is 'end_turn'?",
+      "back": "Present the response to the user. The assistant has completed its response naturally and no further action is required. Extract and display the text content from the response."
+    },
+    {
+      "front": "Why is checking response.stop_reason better than parsing text for 'I'm done'?",
+      "back": "Parsing text is unreliable because the assistant may include text in tool_use responses or may naturally complete without saying 'done.' The stop_reason field is the authoritative signal from the API about why generation stopped."
+    },
+    {
+      "front": "What is a common mistake when setting max_tokens in an agentic loop?",
+      "back": "Setting an arbitrary iteration cap (like maxIterations = 5) as the primary stopping mechanism. Instead, rely on stop_reason to determine when the loop should end naturally or when max_tokens truncation occurs."
+    },
+    {
+      "front": "When stop_reason is 'max_tokens', what should you do?",
+      "back": "Raise max_tokens or continue the response by appending the truncated response as an assistant message and sending a continuation request. Optionally append a note indicating the response was truncated."
+    },
+    {
+      "front": "What is the difference between stop_reason values and HTTP errors?",
+      "back": "stop_reason values are part of successful 200 responses and indicate why generation stopped normally. HTTP errors (4xx/5xx) indicate request processing failures. Always distinguish between them in error handling."
+    },
+    {
+      "front": "When handling server tools with pause_turn, what is the correct next step?",
+      "back": "Send the assistant's response back to Claude as-is by adding it to the messages array, then make another API request with the same tools array. This allows Claude to continue processing the server tool loop."
+    },
+    {
+      "front": "What should you include in a user message that contains tool_result blocks?",
+      "back": "Only the tool_result blocks—nothing else. No additional text. Adding anything after the tool_result blocks ends the assistant turn and may cause validation errors."
+    },
+    {
+      "front": "What does stop_reason 'refusal' mean and how should you handle it?",
+      "back": "Claude declined to generate a response for safety reasons (returned as HTTP 200, not an error). Check stop_details for the policy category. Consider retrying on a fallback model or rephrasing the request."
+    }
+  ]
+}

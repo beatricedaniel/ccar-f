@@ -1,0 +1,108 @@
+{
+  "exercise": 3,
+  "slug": "structured-extraction-pipeline",
+  "title": "Build a Structured Data Extraction Pipeline",
+  "domains": ["D4", "D5"],
+  "objective": "Practice designing JSON schemas, using tool_use for structured output, implementing validation-retry loops, and designing batch processing strategies.",
+  "overview": "This exercise is the D4 core — turning free text into reliable structured data — extended with the D5 reliability machinery that makes it production-grade: schemas that permit honest absence, a retry loop that distinguishes fixable from unfixable failures, few-shot examples for format robustness, batch processing at scale, and confidence-based human routing. The recurring principle: design the schema and the loop so the model reports uncertainty and absence instead of fabricating.",
+  "steps": [
+    {
+      "n": 1,
+      "title": "Schema with nullable fields and enum+other",
+      "domains": ["D4"],
+      "task": "Define an extraction tool with a JSON schema containing required and optional fields, an enum with an \"other\" + detail string pattern, and nullable fields for information that may not exist in source documents. Process documents where some fields are absent and verify the model returns null rather than fabricating values.",
+      "explain": "Schema design is a hallucination-control surface. Making a field nullable (and instructing the model to use null when the source lacks the information) gives the model a sanctioned way to say 'not present' instead of inventing a plausible value. The enum + 'other' + detail-string pattern handles the real world's long tail: a closed enum for known categories, plus an 'other' option with a free-text detail field so novel values are captured rather than force-fit into a wrong bucket.",
+      "hints": [
+        "Distinguish required (must always appear) from optional (may be omitted) from nullable (appears but can be null when absent) — they are three different contracts.",
+        "For the enum, add 'other' as a member and a companion string field (e.g. category_other) that's populated only when category == 'other'.",
+        "Explicitly instruct 'return null if the document doesn't state this' — the schema permits null, the prompt tells the model to prefer it over guessing."
+      ],
+      "checkpoint": "A document has no publication date. Why is a nullable date field better than an optional one here, and how does 'other' + detail beat a plain enum?",
+      "model_answer": "A nullable field lets the model explicitly assert 'this was looked for and is absent' by returning null — an unambiguous, machine-checkable signal — whereas merely optional means the field might be omitted for reasons you can't distinguish from an oversight. Explicit null prevents the model from fabricating a date to fill a required slot. The enum + 'other' + detail pattern beats a plain enum because a closed enum forces every value into a predefined bucket, so novel categories get mis-labeled; 'other' plus a free-text detail captures the true value without corrupting the clean enum values, preserving both structure and fidelity.",
+      "pitfalls": [
+        "Making everything required, which pressures the model to fabricate values for absent fields.",
+        "A closed enum with no escape hatch, forcing wrong-bucket classifications.",
+        "Permitting null in the schema but not instructing the model to prefer it over guessing."
+      ]
+    },
+    {
+      "n": 2,
+      "title": "Validation-retry loop with error feedback",
+      "domains": ["D4", "D5"],
+      "task": "Implement a validation-retry loop: when Pydantic or JSON schema validation fails, send a follow-up request including the document, the failed extraction, and the specific validation error. Track which errors are resolvable via retry (format mismatches) versus which are not (information absent from source).",
+      "explain": "Structured output is only trustworthy if you validate it and close the loop on failure. When validation fails, a naive 'try again' wastes calls; the effective pattern feeds the model its own failed output plus the exact validation error so it can correct precisely. Crucially, you triage error types: a format mismatch (wrong date format, string where int expected) is retryable and usually fixed on the next pass; genuinely-absent information is NOT fixable by retry — the answer is null/human review, and retrying just invites fabrication.",
+      "hints": [
+        "The retry prompt should contain three things: the source document, the previous invalid extraction, and the specific validation error message — precision beats 'that was wrong, redo it.'",
+        "Classify failures: format/type errors → retryable; 'required info absent from source' → not retryable, route to null or human review.",
+        "Bound the retries (e.g. max 2) so a truly unfixable case doesn't loop forever — an unbounded retry is a reliability bug."
+      ],
+      "checkpoint": "Validation fails because a required 'total_amount' isn't in the document. Should you retry? Contrast with a failure where the date came back as 'Jan 3 2026' but the schema wants ISO 8601.",
+      "model_answer": "Don't retry the missing total_amount by demanding a value — the information isn't in the source, so retrying pressures the model to fabricate; the correct handling is to allow null (or route to human review) and, if the field is genuinely required, flag it as unextractable. Do retry the date case: 'Jan 3 2026' vs ISO 8601 is a format mismatch, so a follow-up including the doc, the bad output, and the specific error ('date must be YYYY-MM-DD') will reliably fix it. The discipline is triaging retryable format/type errors from non-retryable absence, and bounding retries either way.",
+      "pitfalls": [
+        "Retrying without including the specific validation error, so the model can't target the fix.",
+        "Retrying 'information absent' failures, effectively coaxing the model to hallucinate a value.",
+        "Unbounded retry loops on unfixable errors — no max-attempts cap."
+      ]
+    },
+    {
+      "n": 3,
+      "title": "Few-shot examples for format robustness",
+      "domains": ["D4"],
+      "task": "Add few-shot examples demonstrating extraction from documents with varied formats (e.g., inline citations vs bibliographies, narrative descriptions vs structured tables) and verify improved handling of structural variety.",
+      "explain": "Few-shot examples teach the model the mapping from messy, varied inputs to your clean schema far more effectively than prose instructions. The key is that the examples should span the STRUCTURAL variety you actually see — a narrative paragraph, a table, an inline-citation vs a bibliography — so the model generalizes across formats rather than overfitting to one layout. This is a canonical D4 technique: demonstrate the hard cases, don't just describe them.",
+      "hints": [
+        "Choose examples for coverage of structural variety, not just quantity — one narrative, one tabular, one citation-heavy beats three similar samples.",
+        "Show the full input→output pair (source snippet → exact target JSON) so the model learns the transformation, including how to handle absent fields (null) in-example.",
+        "Verify by testing on a format you did NOT include and checking generalization; add an example only if a real failure mode appears."
+      ],
+      "checkpoint": "Your extractor works on tables but fails on narrative prose. What kind of few-shot example do you add, and why not just add more table examples?",
+      "model_answer": "Add a few-shot example whose input is narrative prose and whose output is the correctly-populated target JSON, so the model sees how to map unstructured description onto the schema. More table examples don't help because the failure isn't lack of table competence — it's an unseen structural format; examples must cover the variety that's failing. Ideally include the full input→output pair and demonstrate null for anything the prose omits, so the model generalizes to narrative inputs rather than overfitting further to tables.",
+      "pitfalls": [
+        "Stacking near-identical examples (all the same format), which overfits instead of generalizing.",
+        "Describing hard formats in prose instead of demonstrating them with concrete examples.",
+        "Examples that never show the absent-field/null case, so the model doesn't learn to report absence."
+      ]
+    },
+    {
+      "n": 4,
+      "title": "Batch 100 docs with failure handling",
+      "domains": ["D5"],
+      "task": "Design a batch processing strategy: submit a batch of 100 documents using the Message Batches API, handle failures by custom_id, resubmit failed documents with modifications (e.g., chunking oversized documents), and calculate total processing time relative to SLA constraints.",
+      "explain": "At scale, the Message Batches API trades latency for throughput and cost efficiency — it's asynchronous, so you design around completion time, not per-request round-trips. Each request carries a custom_id so you can map results (and failures) back to specific documents. Failures are handled per custom_id: an oversized document gets chunked and resubmitted, a transient failure retried. Then you reason about whether the batch's turnaround fits your SLA — a D5 reliability-and-scale calculation, not a prompt-quality one.",
+      "hints": [
+        "custom_id is the join key: it lets you correlate each result/failure back to its source document in an async, out-of-order batch.",
+        "Handle failures by cause: oversized → chunk and resubmit; transient → retry; genuinely bad input → route out. Don't blindly resubmit the whole batch.",
+        "SLA reasoning: batches are async with a completion window, so compare that window (plus any resubmission round) against your deadline — batch is great for throughput, not for low latency."
+      ],
+      "checkpoint": "20 of 100 documents fail because they exceed the size limit, and your SLA is 24 hours. What's your resubmission strategy, and how does batch async-latency affect meeting the SLA?",
+      "model_answer": "Identify the 20 failures by their custom_ids, chunk each oversized document into schema-compatible pieces, and resubmit just those chunks as a second batch (optionally merging per-document results afterward) — you resubmit only what failed, not all 100. For the SLA: the Batches API is asynchronous with a completion window, so total time ≈ first-batch turnaround + resubmission-batch turnaround; you check that this sum fits inside 24 hours. Because batch prioritizes throughput/cost over latency, it comfortably suits a 24-hour SLA but would be the wrong choice for a real-time, low-latency requirement.",
+      "pitfalls": [
+        "No custom_id (or non-unique ones), so you can't map async results/failures back to documents.",
+        "Resubmitting the entire batch on partial failure instead of only the failed custom_ids.",
+        "Choosing batch for a low-latency SLA — its async completion window makes it a throughput tool, not a real-time one."
+      ]
+    },
+    {
+      "n": 5,
+      "title": "Confidence scores and human-review routing",
+      "domains": ["D5", "D4"],
+      "task": "Implement a human review routing strategy: have the model output field-level confidence scores, route low-confidence extractions to human review, and analyze accuracy by document type and field to verify consistent performance.",
+      "explain": "The last mile of a reliable extraction pipeline is knowing what NOT to trust automatically. Field-level confidence scores let you route only the uncertain extractions to humans, keeping human effort proportional to risk. Then you analyze accuracy sliced by document type and field — this reveals systematic weak spots (e.g. dates in scanned PDFs) that a single aggregate number hides, and tells you where to invest (better few-shot examples, schema tweaks, or always-route rules). This closes the D5 reliability loop with a human-in-the-loop safety valve.",
+      "hints": [
+        "Confidence should be field-level, not one score per document — you want to route just the shaky fields, not whole docs.",
+        "Set a threshold that balances human cost against error risk; low-confidence → human review, high-confidence → auto-accept.",
+        "Slice accuracy by document type AND field — an aggregate 95% can hide a field or format that's systematically failing."
+      ],
+      "checkpoint": "Why analyze accuracy by document type and field rather than one overall accuracy number, and what do field-level confidence scores let you do that a single per-document score can't?",
+      "model_answer": "A single aggregate accuracy averages away systematic failures — 95% overall can conceal that dates in scanned documents are 60% accurate — so slicing by document type and field surfaces exactly where the pipeline is weak and where to focus fixes or always-route-to-human rules. Field-level confidence lets you route surgically: send only the specific uncertain fields (or the docs containing them) to human review while auto-accepting the confident ones, keeping human effort proportional to actual risk. A single per-document score forces an all-or-nothing routing decision and wastes reviewer time on documents that are mostly reliable.",
+      "pitfalls": [
+        "One confidence score per document, forcing coarse all-or-nothing routing.",
+        "Trusting a single aggregate accuracy that masks a systematically failing field or format.",
+        "Setting the review threshold without weighing human-review cost against the cost of an undetected error."
+      ]
+    }
+  ],
+  "wrap_up": "The spine of this exercise: design schemas that let the model report absence (null) and the long tail (enum+other); validate every output and retry precisely, triaging fixable format errors from unfixable absence; teach format robustness with structurally-varied few-shot examples; scale with the async Batches API keyed on custom_id; and add a confidence-driven human-review valve with sliced accuracy analysis. For the exam, the repeated D4/D5 lesson is anti-fabrication: structure the schema and the loop so uncertainty and absence are first-class outputs, not gaps the model papers over. Review nullable-vs-optional, the validation-retry pattern, and when batch (throughput) beats synchronous calls (latency).",
+  "authored_by": "claude-code (Opus 4.8)",
+  "generated_at": "2026-09-03"
+}

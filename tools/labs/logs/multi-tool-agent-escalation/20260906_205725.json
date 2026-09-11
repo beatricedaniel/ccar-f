@@ -1,0 +1,54 @@
+{
+  "exercise": 1,
+  "slug": "multi-tool-agent-escalation",
+  "title": "Build a Multi-Tool Agent with Escalation Logic",
+  "domains": [
+    "D1",
+    "D2",
+    "D5"
+  ],
+  "started_at": "2026-09-06T20:57:25",
+  "finished_at": "2026-09-06T20:57:25",
+  "guide_generated_at": "2026-09-03",
+  "steps": [
+    {
+      "n": 1,
+      "title": "Define 3-4 differentiated MCP tools",
+      "domains": [
+        "D2"
+      ],
+      "marked": "revisit"
+    },
+    {
+      "n": 2,
+      "title": "Drive the loop from stop_reason",
+      "domains": [
+        "D1"
+      ],
+      "marked": "got_it"
+    },
+    {
+      "n": 3,
+      "title": "Return structured, categorized tool errors",
+      "domains": [
+        "D2",
+        "D5"
+      ],
+      "marked": "revisit"
+    },
+    {
+      "n": 4,
+      "title": "Enforce a business rule with a programmatic hook",
+      "domains": [
+        "D1",
+        "D5"
+      ],
+      "marked": "got_it"
+    }
+  ],
+  "revisit": [
+    "Define 3-4 differentiated MCP tools",
+    "Return structured, categorized tool errors"
+  ],
+  "pct_understood": 40.0
+}

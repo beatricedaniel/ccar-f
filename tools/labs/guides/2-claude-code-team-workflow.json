@@ -1,0 +1,108 @@
+{
+  "exercise": 2,
+  "slug": "claude-code-team-workflow",
+  "title": "Configure Claude Code for a Team Development Workflow",
+  "domains": ["D2", "D3"],
+  "objective": "Practice configuring CLAUDE.md hierarchies, custom slash commands, path-specific rules, and MCP server integration for a multi-developer project.",
+  "overview": "This is the D3 heartland: how Claude Code is actually configured for a real team. You will layer instructions (CLAUDE.md), scope conventions to file paths (.claude/rules with glob frontmatter), isolate a skill so it can't pollute context (context: fork), wire both shared and personal MCP servers (D2), and finally judge when plan mode earns its cost. The through-line is precedence and scope: which instruction applies, where, and to whom.",
+  "steps": [
+    {
+      "n": 1,
+      "title": "Project-level CLAUDE.md standards",
+      "domains": ["D3"],
+      "task": "Create a project-level CLAUDE.md with universal coding standards and testing conventions. Verify that instructions placed at the project level are consistently applied across all team members.",
+      "explain": "CLAUDE.md is the always-on instruction layer, and it is hierarchical: enterprise/managed → project (checked into the repo, shared by the whole team) → user (~/.claude, personal). A project-level CLAUDE.md is the right home for universal standards precisely because it is version-controlled and loaded for everyone on the repo, so every teammate's Claude Code sees the same rules. Keep it concise and imperative — it is consumed every turn.",
+      "hints": [
+        "Project CLAUDE.md lives in the repo root (checked in) so it applies to all team members; personal preferences belong in the user-level ~/.claude file, not here.",
+        "Precedence flows from broad to narrow: enterprise/managed > project > user; put team-universal rules at the project level.",
+        "Verify by editing from two accounts/machines: the same project instructions should be in effect for both, because both load the checked-in file."
+      ],
+      "checkpoint": "A teammate wants 'always use tabs' but the team standard is spaces. Where does each instruction belong, and which wins?",
+      "model_answer": "The team standard ('spaces') belongs in the checked-in project CLAUDE.md so it applies to everyone; the personal 'tabs' preference belongs in that teammate's user-level ~/.claude configuration. Given a genuine conflict on shared project code, the project/managed layer is the shared source of truth the team should follow — personal preferences shouldn't override a team convention on the shared repo. The real fix is to resolve it as a team and encode the agreed rule at the project level so it's consistent for all members.",
+      "pitfalls": [
+        "Putting personal preferences in the project CLAUDE.md (or team standards only in a personal file), so they don't apply where intended.",
+        "Writing a sprawling CLAUDE.md — it's read every turn; bloat costs context and dilutes the important rules.",
+        "Assuming a rule is 'applied to everyone' without checking in the file / verifying across accounts."
+      ]
+    },
+    {
+      "n": 2,
+      "title": "Path-scoped rules with glob frontmatter",
+      "domains": ["D3"],
+      "task": "Create .claude/rules/ files with YAML frontmatter glob patterns for different code areas (e.g., paths: [\"src/api/**/*\"] for API conventions, paths: [\"**/*.test.*\"] for testing conventions). Test that rules load only when editing matching files.",
+      "explain": "Rules files let you attach conventions to specific paths via a YAML frontmatter glob, so API conventions load only when touching src/api and test conventions only when editing test files. This is scoped context: instead of stuffing every convention into one global CLAUDE.md (which pays for all of them on every turn), you load the right guidance exactly when it's relevant — a direct D5 context-efficiency win expressed through D3 configuration.",
+      "hints": [
+        "The frontmatter paths: [...] is a glob matched against the file being edited; the rule's body loads only on a match.",
+        "Scope narrowly and by concern: one rule for API contracts (src/api/**/*), one for tests (**/*.test.*), rather than one catch-all.",
+        "Test by opening a matching file vs a non-matching file and confirming the rule's guidance is present only for the match."
+      ],
+      "checkpoint": "Why put API conventions in .claude/rules/ with paths: [\"src/api/**/*\"] instead of in the global CLAUDE.md?",
+      "model_answer": "Because the API conventions are only relevant when editing API code. A path-scoped rule loads that guidance exactly when a matching file is being edited and stays out of context otherwise, keeping every other turn leaner — whereas putting it in the global CLAUDE.md pays the token and attention cost of API rules on every interaction, even when editing unrelated files. It's the same instruction-hierarchy idea applied at file granularity: right guidance, right place, minimal always-on footprint.",
+      "pitfalls": [
+        "Overly broad globs (e.g. **/*) that make a 'scoped' rule effectively global.",
+        "Dumping all conventions into CLAUDE.md and losing the context savings scoped rules provide.",
+        "Forgetting the frontmatter is a glob against the edited file's path — mismatched patterns silently never load."
+      ]
+    },
+    {
+      "n": 3,
+      "title": "Isolate a skill with context: fork",
+      "domains": ["D3", "D2"],
+      "task": "Create a project-scoped skill in .claude/skills/ with context: fork and allowed-tools restrictions. Verify the skill runs in isolation without polluting the main conversation context.",
+      "explain": "A skill with context: fork runs in an isolated context that does not bleed its intermediate work back into the main conversation — only its result returns. Combined with allowed-tools restrictions, the skill can do a large or messy job (lots of file reads, tool calls) without flooding the primary context window or gaining more capability than it needs. This is the intersection of D3 (skills configuration), D5 (context isolation for reliability), and D2 (least-privilege tool access).",
+      "hints": [
+        "context: fork = the skill's exploration happens in a child context; the main thread receives the outcome, not the transcript — that's the context-pollution guard.",
+        "allowed-tools is least privilege: grant only the tools the skill needs, so a summarizing skill can't, say, write files.",
+        "Verify by running the skill on a big task and confirming the main conversation stays lean afterward (no giant intermediate dump)."
+      ],
+      "checkpoint": "What two distinct problems do context: fork and allowed-tools each solve, and why use both together?",
+      "model_answer": "context: fork solves context pollution/window management — the skill's noisy intermediate steps stay in an isolated child context and only the distilled result returns, so the main conversation doesn't fill up with exploration. allowed-tools solves least-privilege access — it restricts which tools the skill can invoke, so it can't take actions beyond its job (e.g. a read-only analysis skill can't write or delete). Used together you get an isolated worker that is both context-clean and capability-bounded: safer and more reliable than an inline, fully-privileged skill.",
+      "pitfalls": [
+        "Running heavy work inline (no fork), so intermediate output bloats and destabilizes the main context.",
+        "Granting broad tool access 'just in case,' defeating least privilege.",
+        "Assuming fork shares state — it doesn't inherit/return the full transcript; pass what the skill needs and expect only its result back."
+      ]
+    },
+    {
+      "n": 4,
+      "title": "Wire shared and personal MCP servers",
+      "domains": ["D2"],
+      "task": "Configure an MCP server in .mcp.json with environment variable expansion for credentials. Add a personal experimental MCP server in ~/.claude.json and verify both are available simultaneously.",
+      "explain": "MCP servers are configured at two scopes: .mcp.json is checked into the repo and shared by the team; ~/.claude.json is personal and not shared. Credentials never get hard-coded — you reference environment variables (expanded at load) so the shared config carries no secrets. Both scopes compose: a project server and your personal experimental server are available in the same session. This is the D2 side of the exercise — integrating tools/servers cleanly and securely.",
+      "hints": [
+        "Use ${ENV_VAR} expansion in .mcp.json for API keys so the committed file holds references, not secrets.",
+        ".mcp.json = shared/project scope (checked in); ~/.claude.json = personal scope (not checked in) — team members share the former, keep their own of the latter.",
+        "Verify both load by listing available MCP tools in a session and confirming servers from both files appear."
+      ],
+      "checkpoint": "Why put the team's database MCP server in .mcp.json but your experimental one in ~/.claude.json, and how do you keep the DB credentials out of version control?",
+      "model_answer": "The team database server belongs in .mcp.json because it's checked in and everyone on the repo should have it; your experimental server belongs in ~/.claude.json because it's personal and shouldn't be forced on the team or committed. Credentials stay out of git by using environment-variable expansion (e.g. ${DB_PASSWORD}) in .mcp.json — the committed file references the variable, and each developer supplies the actual value via their environment. Both configs load together, so in one session you have the shared DB server and your personal experimental server available simultaneously.",
+      "pitfalls": [
+        "Hard-coding secrets in .mcp.json (which is committed) instead of using env-var expansion.",
+        "Putting a personal/experimental server in the shared .mcp.json and imposing it on the team.",
+        "Assuming one scope overrides the other — they compose; both sets of servers are available."
+      ]
+    },
+    {
+      "n": 5,
+      "title": "Judge plan mode vs direct execution",
+      "domains": ["D3"],
+      "task": "Test plan mode versus direct execution on tasks of varying complexity: a single-file bug fix, a multi-file library migration, and a new feature with multiple valid implementation approaches. Observe when plan mode provides value.",
+      "explain": "Plan mode adds a read-only planning phase before any edits — its value scales with uncertainty and blast radius. A one-line, well-understood bug fix rarely needs it; the plan overhead exceeds the benefit. A multi-file migration or a feature with several valid designs benefits greatly: mapping dependencies and choosing an approach BEFORE editing prevents half-done, wrong-direction changes. This is the core D3 judgment call: match the mode to the task's complexity and reversibility.",
+      "hints": [
+        "Ask two questions: how many files/systems does this touch, and is the approach obvious? High blast radius or genuine design ambiguity → plan mode.",
+        "For the single-file fix, direct execution is usually right — planning ceremony costs more than it saves.",
+        "For 'multiple valid approaches,' plan mode's real payoff is surfacing and choosing among them before you commit code."
+      ],
+      "checkpoint": "Rank the three tasks (single-file bug fix, multi-file migration, feature with multiple valid designs) by how much plan mode helps, and say why.",
+      "model_answer": "Most helpful: the feature with multiple valid designs and the multi-file migration — both have high uncertainty and/or wide blast radius, so mapping dependencies and choosing an approach before editing prevents committing to a wrong or half-finished direction. The migration especially benefits from dependency mapping across files; the ambiguous feature benefits from comparing approaches up front. Least helpful: the single-file bug fix — it's low-risk, well-scoped, and the approach is obvious, so direct execution is faster and plan mode is mostly overhead. The rule: plan when complexity or reversibility cost is high, execute directly when the change is small and clear.",
+      "pitfalls": [
+        "Using plan mode reflexively on trivial changes, adding overhead with no benefit.",
+        "Skipping plan mode on a sprawling migration and discovering mid-edit that the approach was wrong.",
+        "Judging by lines of code alone — design ambiguity (multiple valid approaches) is a reason to plan even when the diff is small."
+      ]
+    }
+  ],
+  "wrap_up": "The unifying theme is scope and precedence: CLAUDE.md hierarchy (managed > project > user), path-scoped rules that load only where relevant, forked/least-privilege skills, and shared vs personal MCP configs — plus the meta-skill of choosing plan mode by complexity. For the exam, be able to place any given instruction at the correct layer and justify it, keep secrets out of committed configs via env-var expansion, and articulate when plan mode's up-front cost pays off. This exercise is almost entirely D3 with a D2 MCP-integration seam in step 4.",
+  "authored_by": "claude-code (Opus 4.8)",
+  "generated_at": "2026-09-03"
+}
