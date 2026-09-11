@@ -1,0 +1,54 @@
+{
+  "domain": 3,
+  "task": "3.2",
+  "label": "Create and configure custom slash commands and skills",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:13:56",
+  "source_pdfs": [
+    "3.2-create-and-configure-custom-slash-commands-and-skills.pdf",
+    "3.2-skills.pdf",
+    "3.2-slash-commands.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What is the core difference between a custom slash command and a skill?",
+      "back": "A command's payload is an imperative prompt template — 'do X with $ARGUMENTS'. A skill's payload is a structured knowledge document — 'here is everything about domain Y, now apply it'. Commands are for repeatable actions; skills encode team conventions, domain ontologies, and architectural patterns, and can bundle supporting files."
+    },
+    {
+      "front": "Where do project- and user-scoped commands and skills live, and which wins on a name clash?",
+      "back": "Commands: .claude/commands/<name>.md (project) and ~/.claude/commands/<name>.md (user). Skills: .claude/skills/<name>/SKILL.md and ~/.claude/skills/<name>/SKILL.md. Project scope overrides user scope for the same filename, letting a team override personal defaults. If a skill and a command share a name, the SKILL wins."
+    },
+    {
+      "front": "What does `context: fork` do, and when should you use it?",
+      "back": "It runs the command/skill in an isolated sub-agent that receives a copy of the conversation state and writes nothing back to the parent. Use it for token-heavy, speculative, or noisy work — a deep security audit, a large refactor preview — so it doesn't consume the parent context window or pollute the conversation."
+    },
+    {
+      "front": "What happens if you leave `allowed-tools` unset?",
+      "back": "The command silently gets ALL tools available in the session, including write and execute — even on a read-only documentation command. Always declare the minimal set (e.g. allowed-tools: [Read]). Note the grant is per-turn: it clears on your next message."
+    },
+    {
+      "front": "Exam trap: what does `argument-hint` actually do?",
+      "back": "Nothing at execution time. It is a UI-only placeholder label shown in the command palette. It does NOT validate or enforce argument format or presence — validate in the prompt body if the argument is required."
+    },
+    {
+      "front": "List the argument placeholders available in a command body.",
+      "back": "$ARGUMENTS — the full argument string as typed. $1, $2 … / $ARGUMENTS[0], $ARGUMENTS[1] — positional ($N is shorthand for $ARGUMENTS[N]). $name — a named argument declared in the `arguments:` frontmatter list. If args are passed but no placeholder consumes them, Claude Code appends 'ARGUMENTS: <value>' so Claude still sees them."
+    },
+    {
+      "front": "What is progressive disclosure in a skill, and what's the size guidance?",
+      "back": "Only SKILL.md and each skill's short description are always available; the full body and supporting files load on demand, so long reference material costs almost nothing until invoked. Keep SKILL.md under ~500 lines and move detail into sibling files (reference.md, examples.md, scripts/) referenced from it."
+    },
+    {
+      "front": "Why is a skill that ends with 'now do X' a problem, and how do you make a task-style skill safe?",
+      "back": "Skills are knowledge payloads, and Claude can auto-load them when the description matches — so an imperative ending can cause side effects when invoked without a clear target. Keep skills descriptive and let the calling context supply the action; if it must perform a task, set `disable-model-invocation: true` so only the user can trigger it."
+    },
+    {
+      "front": "Contrast `disable-model-invocation: true` with `user-invocable: false`.",
+      "back": "They are opposite controls. disable-model-invocation hides the skill from CLAUDE — you can still run /name yourself. user-invocable: false hides it from YOU and the / menu — only Claude can auto-invoke it (background knowledge). Both default to the permissive side."
+    },
+    {
+      "front": "What does the `!` backtick syntax do in a command body, and what is its failure mode?",
+      "back": "It runs a shell command BEFORE the body reaches Claude and inlines the command's OUTPUT (not the command itself) — e.g. !`git diff HEAD`. A failed injected command aborts the whole invocation, so append `|| true` for commands expected to exit non-zero. The substitution runs once and its output is not re-scanned for further placeholders."
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "domain": 1,
+  "task": "1.6",
+  "label": "Design task decomposition strategies for complex workflows",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:12:32",
+  "source_pdfs": [
+    "1.6-agents.pdf",
+    "1.6-design-task-decomposition-strategies-for-complex-workflows.pdf",
+    "1.6-prompt-chaining.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What is the core decision behind any task-decomposition strategy?",
+      "back": "How much control you retain versus how much reasoning you delegate to the model. Static (prompt chaining) buys predictability and auditability; dynamic (model-directed) buys flexibility and adaptivity."
+    },
+    {
+      "front": "Define prompt chaining and say when it is the right choice.",
+      "back": "The developer hardcodes the subtask sequence in application logic: each step's output feeds the next, and the steps, their order, and their inputs are decided upfront. Use it when the structure is known and stable and does NOT depend on the content of the data — e.g. extract → transform → validate → write."
+    },
+    {
+      "front": "What are the two main weaknesses of prompt chaining?",
+      "back": "It is brittle when the task structure varies by input (a three-step pipeline breaks when a fourth step is sometimes needed), and the context passed between steps must be explicitly designed — information can be lost at handoff boundaries."
+    },
+    {
+      "front": "Define dynamic decomposition and its three costs.",
+      "back": "Give the model a high-level objective and let it decide at runtime which subtasks to create, in what order, and when the goal is met; the orchestrator loop just executes what the model requests via tools. Costs: higher token spend (it reasons about structure every invocation), harder to test/audit (paths vary per run), and it needs robust tool design plus loop-termination logic to prevent runaway execution."
+    },
+    {
+      "front": "What is the invariant that makes parallel per-file processing safe?",
+      "back": "Independence: no subtask may read a sibling subtask's output. Each unit is self-contained — read it, analyse it, produce a result, discard its context — and results are aggregated after all units finish. Verify independence before reaching for Promise.all."
+    },
+    {
+      "front": "When must you use cross-file / shared-context processing instead, and what does it cost?",
+      "back": "When relationships across files matter — dependency analysis, architectural review, a refactor that must stay internally consistent, any case where a decision in one file constrains another. It is sequential rather than parallel, context-window pressure grows with file count, and it needs aggressive summarisation to avoid prompt bloat."
+    },
+    {
+      "front": "What is the granularity heuristic for decomposition?",
+      "back": "Decompose to the level where each subtask can be clearly specified AND independently verified. If a subtask needs another's output in order to be validated, merge them or sequence them explicitly. If two subtasks always run back-to-back with no branching between them, they belong in one step."
+    },
+    {
+      "front": "What do finer and coarser granularity each trade away?",
+      "back": "Finer: more parallelism and less per-step context, but more coordination overhead, more API calls, more latency, and more failure points. Coarser: less overhead, but risks hitting context limits and makes individual steps harder to test or retry."
+    },
+    {
+      "front": "Exam trap: the workflow shape is always the same. Is dynamic decomposition a good fit?",
+      "back": "No. For a fixed workflow a hardcoded chain is cheaper, faster, and more testable. Reserve dynamic decomposition for genuinely variable workflows where the number and nature of subtasks can't be known in advance."
+    },
+    {
+      "front": "What is the canonical prompt-chaining pattern, and when should you delegate to subagents rather than work directly?",
+      "back": "Self-correction: generate a draft → review it against criteria → refine — as separate API calls so you can log, evaluate, or branch at any point. Delegate to subagents for independent workstreams that don't share state; work directly for simple tasks, sequential operations, single-file edits, or when context must be maintained across steps. Watch for over-delegation — newer models may spawn a subagent where a direct grep would do."
+    }
+  ]
+}

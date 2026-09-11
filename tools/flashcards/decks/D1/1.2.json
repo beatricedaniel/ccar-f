@@ -1,0 +1,55 @@
+{
+  "domain": 1,
+  "task": "1.2",
+  "label": "Orchestrate multi agent systems with coordinator subagent patterns",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:11:12",
+  "source_pdfs": [
+    "1.2-models.pdf",
+    "1.2-multi-agent-systems.pdf",
+    "1.2-orchestrate-multi-agent-systems-with-coordinator-subagent-patterns.pdf",
+    "1.2-tool-use.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What topology do coordinator-subagent multi-agent systems follow, and what does each node do?",
+      "back": "Hub-and-spoke. One coordinator receives the complex task, decomposes it into well-scoped subtasks, delegates each to a specialised subagent, and aggregates the results. The coordinator drives decisions; each subagent works inside guardrails enforced in code."
+    },
+    {
+      "front": "What is the 'isolated context' principle, and why does it matter?",
+      "back": "Every subagent runs in its own independent conversation: no memory of other subagents, no access to the coordinator's history. It prevents context contamination, keeps each subagent focused, and makes the system easier to reason about. The coordinator is the only node holding the full picture."
+    },
+    {
+      "front": "Complete the guiding mental model: 'the model drives ____, code enforces ____.'",
+      "back": "The model drives DECISIONS, code enforces GUARDRAILS. Claude decides which subagents to invoke and how to interpret their outputs; your application code controls which tools each subagent may access and what data it can see."
+    },
+    {
+      "front": "Why must the coordinator decompose the task before spawning any subagent?",
+      "back": "Decomposition is where the model earns its role. Skipping it makes the coordinator spawn overlapping or redundant subagents. The system prompt should instruct Claude to produce a structured breakdown first, each subtask with a clear scope, a defined output format, and a minimal allowedTools list."
+    },
+    {
+      "front": "Exam trap: should a subagent be allowed to spawn its own subagents?",
+      "back": "No. In hub-and-spoke, only the coordinator routes work. Subagent-to-subagent calls create uncontrolled fan-out, make aggregation unpredictable, and break the single-point-of-synthesis guarantee."
+    },
+    {
+      "front": "Exam trap: 'subagents share memory so they can coordinate with each other.' True or false?",
+      "back": "False — subagents are isolated by design. Sharing the coordinator's full conversation history bloats the context window, leaks unrelated information, and produces less-focused outputs. Pass each subagent only the context its subtask needs."
+    },
+    {
+      "front": "How is a subagent exposed to the coordinator in code?",
+      "back": "As a tool (e.g. run_research_agent). When the coordinator emits a tool_use block for it, the handler spawns a separate messages.create call with its own narrow system prompt, minimal input, and its own restricted tool list — then returns the text as the tool_result."
+    },
+    {
+      "front": "Describe the coordinator's agentic loop in terms of stop_reason.",
+      "back": "Loop on messages.create with the coordinator system prompt + subagent tools. If stop_reason == 'end_turn', return the text block as the final answer. Otherwise, for each tool_use block run the matching isolated subagent, collect {type:'tool_result', tool_use_id, content}, push the assistant content and a user message of tool_results, and loop again."
+    },
+    {
+      "front": "How should models be assigned across a coordinator and its subagents, and why?",
+      "back": "Strong model for the coordinator (the decider — e.g. Opus), cheaper/faster model for narrow subagents (e.g. Haiku). Match model tier to subtask difficulty to control cost and latency; the coordinator's synthesis work is the part that needs the most capability."
+    },
+    {
+      "front": "What two things should you restrict when configuring each subagent?",
+      "back": "The context it receives (only its subtask's minimal input, never the full history) and its allowedTools list (the smallest set it needs — or no tools at all if it only has to reason)."
+    }
+  ]
+}

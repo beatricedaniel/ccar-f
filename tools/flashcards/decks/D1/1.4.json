@@ -1,0 +1,55 @@
+{
+  "domain": 1,
+  "task": "1.4",
+  "label": "Implement multi step workflows with enforcement and handoff patterns",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:11:51",
+  "source_pdfs": [
+    "1.4-implement-multi-step-workflows-with-enforcement-and-handoff-patterns.pdf",
+    "1.4-tool-use.pdf",
+    "1.4-workflows.pdf",
+    "1.4-zod.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What are the two fundamentally different ways to make a multi-step workflow progress correctly, and which one gives guarantees?",
+      "back": "Prompt-based guidance (instructions like 'always return valid JSON') — convenient but fragile, no hard guarantees; the model can deviate under long context, unexpected input, or ambiguity. Programmatic enforcement — validate each response in code before passing it on, halting or retrying on failure. Only enforcement gives guarantees; the model's intentions are irrelevant."
+    },
+    {
+      "front": "State the governing rule for splitting work between code and the model.",
+      "back": "Use deterministic CODE for anything that must be correct — schema validation, precondition checks, routing/control flow. Use MODEL flexibility for anything requiring judgment — summarisation, classification, generation. Mixing them (trusting the model to enforce its own constraints) is the most common source of silent workflow failures."
+    },
+    {
+      "front": "Describe the structured handoff pattern.",
+      "back": "Each stage emits a typed, validated payload that the next stage takes as input. Instead of passing raw text, you define a schema/interface for what each stage produces and parse the model's output against it — a clear contract at every boundary."
+    },
+    {
+      "front": "Exam trap: is 'Ensure your output is valid JSON' in the system prompt a form of enforcement?",
+      "back": "No. That is prompt-based guidance. Enforcement means parsing and validating in code (e.g. schema.parse from Zod, which throws on mismatch). If the schema check fails, the step failed regardless of what the model intended."
+    },
+    {
+      "front": "Why is passing raw text between workflow stages brittle, even when it usually works?",
+      "back": "A single unexpected phrase or formatting quirk in stage one breaks stage two. Parse into a typed structure at each boundary so the contract is enforced rather than hoped for."
+    },
+    {
+      "front": "Exam trap: the model ends a stage with 'PROCEED'. Should that drive the next step?",
+      "back": "No — using model output for routing decisions mixes concerns. Routing and control flow belong in deterministic code; drive them off schema-validated fields such as `confidence` or `status` (e.g. `if (research.confidence === 'low') throw`)."
+    },
+    {
+      "front": "What is the architectural distinction between a workflow and an agent?",
+      "back": "Workflows orchestrate LLMs and tools through PREDEFINED code paths (predictable, consistent). Agents let the LLM DYNAMICALLY direct its own process and tool usage (flexible, model-driven). Both count as agentic systems."
+    },
+    {
+      "front": "Name the five workflow patterns and the one-line trigger for each.",
+      "back": "Prompt chaining — the task decomposes into a fixed sequence, with gates between steps. Routing — classify the input and send it to a specialised handler. Parallelisation — run calls simultaneously and aggregate (sectioning = independent subtasks; voting = same task repeated). Orchestrator-workers — a central LLM decides the subtasks dynamically. Evaluator-optimizer — generate, critique, repeat until accepted."
+    },
+    {
+      "front": "How do orchestrator-workers and parallelisation differ, given they look topologically the same?",
+      "back": "Parallelisation runs PRE-DEFINED subtasks you decided in advance. In orchestrator-workers the central LLM determines the subtasks dynamically from the input — use it when you can't predict the breakdown (e.g. multi-file code changes)."
+    },
+    {
+      "front": "What does a typed step runner do with a validation failure, and what are the three 'Building Effective Agents' principles?",
+      "back": "It retries up to maxRetries (optionally feeding the validation error back into the next attempt) and throws once exhausted. Principles: simplicity (start simple, add complexity only when it demonstrably helps), transparency (show the planning steps), and careful agent-computer interface (ACI) design — tool documentation and testing."
+    }
+  ]
+}

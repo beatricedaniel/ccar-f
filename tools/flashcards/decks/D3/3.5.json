@@ -1,0 +1,53 @@
+{
+  "domain": 3,
+  "task": "3.5",
+  "label": "Apply iterative refinement techniques for progressive improvement",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:14:56",
+  "source_pdfs": [
+    "3.5-apply-iterative-refinement-techniques-for-progressive-improvement.pdf",
+    "3.5-iterative-refinement-tdd.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What is the mental model for iterative refinement, and what part of the loop carries the most value?",
+      "back": "Gradient descent: start at a rough approximation, measure the distance from your target, adjust, repeat. The FEEDBACK — the measurement — is more valuable than the initial output. The goal is to converge together, not to get it right once."
+    },
+    {
+      "front": "Name the five core refinement techniques.",
+      "back": "1) Progressive improvement — ask for a rough first pass. 2) Input/output examples as a refinement anchor. 3) Test-driven iteration — give the failing tests first. 4) The interview pattern — clarify before implementing. 5) Structured feedback loops — name exactly what was wrong and what should change."
+    },
+    {
+      "front": "Why explicitly frame the first request as a rough draft?",
+      "back": "'Give me a rough first pass at this function. We'll refine it.' shifts the interaction from 'get it right once' to 'converge together', lowers the model's tendency to over-hedge and over-explain, and gives you a concrete artifact to react to instead of a blank page."
+    },
+    {
+      "front": "Why are input/output examples better than an abstract description of behaviour?",
+      "back": "Abstract descriptions are ambiguous; concrete input → output pairs are not. They act as the prompting equivalent of a unit-test suite — each example, especially an edge case, rules out a class of incorrect implementations and gives Claude an objective test to reason against while generating."
+    },
+    {
+      "front": "How does the TDD cycle map onto prompt refinement?",
+      "back": "RED — provide the failing test cases as part of the prompt. GREEN — ask for the implementation that satisfies them. REFACTOR/IMPROVE — review and request cleanup. If a test fails, feed the failure back verbatim (assertion plus received value) so Claude can reason about the exact mismatch."
+    },
+    {
+      "front": "What is the interview pattern, and what does it save?",
+      "back": "Instruct Claude to identify ambiguities and ask clarifying questions BEFORE writing code — 'only proceed once you have enough information.' One well-structured clarification round often halves the number of revision cycles, and it's most valuable when constraints are non-obvious (performance budgets, data shape assumptions, side-effect boundaries)."
+    },
+    {
+      "front": "What makes feedback 'structured', and why does it matter?",
+      "back": "It names what the output did, what you expected, and the difference — e.g. 'The previous version creates a new array on every call. Refactor to reuse the existing buffer.' Vague feedback like 'make it better' produces vague improvements; precise feedback produces targeted corrections."
+    },
+    {
+      "front": "Exam trap: should you restate the full specification on every refinement turn?",
+      "back": "No. Claude retains the conversation, so refer to the previous output by reference ('in the previous version'). Restating everything wastes context and introduces inconsistencies between turns."
+    },
+    {
+      "front": "A test fails on the first implementation. What's the wrong reflex, and the right move?",
+      "back": "Wrong: discarding the implementation and rewriting from scratch. A single failing test usually indicates a localised defect — paste the exact failure back and ask for the targeted fix, which preserves the parts that already work."
+    },
+    {
+      "front": "What does 'closing the loop' mean after a correction, and why is it needed?",
+      "back": "Re-verify the corrected implementation against ALL prior examples and tests, not just the one that failed — otherwise the fix can silently regress behaviour an earlier example already pinned down. Also avoid the opposite error at the start: don't overload the first prompt with every edge case, which produces bloated, defensive output. Lead with the core case and layer edge cases in during refinement."
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "domain": 5,
+  "task": "5.6",
+  "label": "Preserve information provenance and handle uncertainty in synthesis",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:17:59",
+  "source_pdfs": [
+    "5.6-preserve-information-provenance-and-handle-uncertainty-in-synthesis.pdf",
+    "5.6-rag.pdf",
+    "5.6-tool-use.pdf"
+  ],
+  "cards": [
+    {
+      "front": "Define information provenance and say what its absence costs.",
+      "back": "The documented origin of a claim — every synthesised statement traceable to a specific source: document ID, URL, database row, or paragraph/character offset. Without it, downstream consumers cannot verify the claim, cannot re-fetch the source for more context, and cannot audit the agent's reasoning."
+    },
+    {
+      "front": "What is the minimum useful claim-source mapping, and at what granularity must it live?",
+      "back": "Claim text, source identifier, location within the source (page, paragraph, or character offset) and retrieval timestamp — richer mappings add a confidence score and the verbatim excerpt. It must be PER CLAIM: 'The company was founded in 2012' needs its own sources array. A single top-level citation list for the whole response is insufficient."
+    },
+    {
+      "front": "Why is silently resolving a conflict between sources described as hallucination?",
+      "back": "Because the agent presents a single answer with FALSE CERTAINTY. The correct pattern is to detect the conflict during synthesis, emit both claims with their respective sources, and set a conflict flag — surfacing the disagreement so the caller can apply domain knowledge, fetch a tiebreaker, or show both versions."
+    },
+    {
+      "front": "Three things you must NOT do when sources disagree.",
+      "back": "Do not average the values, do not automatically prefer the more recent source, and do not omit the minority claim. Merging them into one sentence ('the market grew approximately 10-12%') hides the disagreement."
+    },
+    {
+      "front": "How should timestamps influence conflict resolution?",
+      "back": "Track both publishedAt and retrievedAt, and treat temporal distance as ONE ADVISORY SIGNAL, never a deterministic override. A newer source doesn't automatically win — a 2019 peer-reviewed paper may beat yesterday's blog post. Timestamp comparison narrows the candidate set; domain rules and confidence scores make the final call."
+    },
+    {
+      "front": "How is uncertainty represented, and what does it mean that uncertainty propagates?",
+      "back": "A normalised confidence float 0.0-1.0 plus a `reasoning` field explaining what drove the score down. Propagation: a claim derived from two conflicting sources inherits LOWER confidence than one with three concordant sources, regardless of how well written the synthesis prose is."
+    },
+    {
+      "front": "Give the confidence heuristic values.",
+      "back": "≈0.9 — three independent sources agree. ≈0.45 — the evidence is split. ≈0.3 — single or weak source. A 0.3 claim must never be phrased as a statement of fact: either surface it via the confidence field or add hedging language in the claim text."
+    },
+    {
+      "front": "Why must provenance be carried from the moment of ingestion?",
+      "back": "Embedding pipelines often discard document IDs and timestamps to save tokens — and once the metadata is gone it CANNOT be reconstructed. Thread sourceId, publishedAt and location through every stage: embedding, retrieval, and synthesis."
+    },
+    {
+      "front": "Write the three core provenance schema shapes.",
+      "back": "SourceRef = { sourceId, location, excerpt, publishedAt, retrievedAt }. SynthesizedClaim = { claim, confidence, sources[], conflict, conflictSummary? } — conflictSummary is required when conflict is true. SynthesisResult = { summary, claims[], synthesizedAt }."
+    },
+    {
+      "front": "How do you make Claude actually emit provenance-aware output?",
+      "back": "Use tool use / structured output: define an emit_synthesis tool whose input_schema requires claim, confidence, sourceIds and conflict per item, add strict: true to guarantee schema conformance, and force the call with tool_choice. Instruct explicitly: 'Flag any conflicts. Do not resolve conflicts.' In a RAG setting, answer only from the retrieved chunks and cite each one."
+    }
+  ]
+}

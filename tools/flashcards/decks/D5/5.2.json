@@ -1,0 +1,53 @@
+{
+  "domain": 5,
+  "task": "5.2",
+  "label": "Design effective escalation and ambiguity resolution patterns",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:16:41",
+  "source_pdfs": [
+    "5.2-design-effective-escalation-and-ambiguity-resolution-patterns.pdf",
+    "5.2-escalation-routing.pdf"
+  ],
+  "cards": [
+    {
+      "front": "Why is getting escalation wrong costly in BOTH directions?",
+      "back": "Under-escalating causes harm; over-escalating destroys the value of the automation. The fix is escalation built on explicit, deterministic rules rather than vague heuristics or fluctuating model confidence scores."
+    },
+    {
+      "front": "What separates a good escalation trigger from a bad one? Give an example of each.",
+      "back": "A good trigger is measurable, testable and improvable — 'escalate when intent confidence falls below 0.7 after two clarification turns'. A bad one is untestable and drifts — 'escalate when the agent feels unsure'. Triggers should be structured conditions evaluated at decision points in the loop, each producing a typed escalation event."
+    },
+    {
+      "front": "Name the three categories that reliably warrant escalation.",
+      "back": "1) Confidence thresholds — ambiguity unresolved after a bounded number of clarification attempts; stop rather than guess. 2) Policy violations — refunds above a threshold, account closures, legal complaints, protected personal data: rules, not judgments. 3) Sensitive topics — crisis language, self-harm, vulnerability, regulated medical/legal/financial advice, where the agent's job is to detect and route, not respond substantively."
+    },
+    {
+      "front": "Give the three reasons sentiment analysis is a poor primary escalation trigger.",
+      "back": "1) Noisy signal — frustration in language doesn't reliably map to needing a human; many frustrated customers are satisfied by a correct automated resolution. 2) Latency mismatch — sentiment scores past utterances, but the escalation decision must anticipate the next moment. 3) Adversarial brittleness — users who learn the system escalates on frustration will feign it to bypass automation."
+    },
+    {
+      "front": "If not sentiment, what should escalation be based on?",
+      "back": "Escalate on WHAT HAPPENED — a policy threshold crossed, a failed resolution attempt, an explicit request — not on HOW IT SOUNDED. Sentiment may be used as a soft modifier at most, never as a primary trigger."
+    },
+    {
+      "front": "What must an escalation hand off besides control?",
+      "back": "Context. The minimal payload is the reason (which trigger fired), a conversation summary, the urgency level, and the customer's stated goal — plus attempts made and a timestamp. Handing off only a customer ID forces the human to re-read everything from scratch."
+    },
+    {
+      "front": "Exam trap: is a single global confidence threshold acceptable?",
+      "back": "No — define thresholds PER DOMAIN or task type. A 0.7 threshold may suit order tracking but is far too permissive for a billing dispute, which tolerates much less uncertainty than a product FAQ."
+    },
+    {
+      "front": "How do customer preferences fit into the escalation decision?",
+      "back": "As a first-class input, not an afterthought. A preference record specifies the preferred channel (chat/callback/email), escalation sensitivity (low/normal/high), and explicit opt-outs or always-escalate topics. Overriding a stated 'I want a human for this' damages trust even when the automated answer is technically correct."
+    },
+    {
+      "front": "In what order should a deterministic shouldEscalate() evaluate its checks?",
+      "back": "Customer-preference always-escalate topics → sensitive topics → policy thresholds (e.g. refund > $500) → low confidence (< 0.7 AND clarification attempts ≥ 2). It returns a typed trigger or null, so the decision is testable."
+    },
+    {
+      "front": "Exam trap: should an agent treat escalation as a failure to avoid?",
+      "back": "No — escalation is a DESIGNED OUTCOME, not an exception. Agents that hide escalations or retry indefinitely to avoid them cause more harm than agents that escalate cleanly and early."
+    }
+  ]
+}

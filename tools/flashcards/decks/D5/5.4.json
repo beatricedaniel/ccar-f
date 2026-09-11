@@ -1,0 +1,53 @@
+{
+  "domain": 5,
+  "task": "5.4",
+  "label": "Manage context effectively in large codebase exploration",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:17:20",
+  "source_pdfs": [
+    "5.4-context-management-compact.pdf",
+    "5.4-manage-context-effectively-in-large-codebase-exploration.pdf"
+  ],
+  "cards": [
+    {
+      "front": "In large-codebase exploration, what is the bottleneck you hit first?",
+      "back": "The context window — not capability, not tool availability. Treat it as working memory: as you fill it with file contents, earlier instructions and findings become statistically less influential."
+    },
+    {
+      "front": "What are the two mechanisms of context degradation?",
+      "back": "1) Raw token count climbs toward the limit, leaving less room for new information. 2) More insidiously, the signal-to-noise ratio falls — early precise findings get buried under later file dumps, and start-of-session instructions carry less weight thousands of tokens later. The model doesn't forget; each item's influence on generation drops."
+    },
+    {
+      "front": "What are the symptoms of context degradation?",
+      "back": "Repeating observations that were already made, losing earlier constraints (e.g. it stops following a naming convention it acknowledged at the start), and reduced precision in answers as the session grows."
+    },
+    {
+      "front": "What is the cure for degradation, and what should a scratchpad entry contain?",
+      "back": "Externalisation — write findings to a persistent scratchpad file as you go instead of trusting the transcript. Each entry: the file path, what was found, and why it matters. It survives /compact and session hand-off, and gives Claude one dense source to re-read instead of dozens of source files."
+    },
+    {
+      "front": "Describe the incremental exploration funnel and its payoff.",
+      "back": "Glob to learn the codebase's shape (e.g. **/*.middleware.ts → 6 files), Grep to locate the specific symbol (e.g. 'rateLimiter' → the definition plus its registration), then Read only the files grep flagged. Reading 8 targeted files instead of 80 leaves far more capacity for reasoning. 'Start with Grep to earn the right to read a file.'"
+    },
+    {
+      "front": "When should /compact be run, and what must always follow it?",
+      "back": "Proactively at phase boundaries — after finishing one discrete investigation phase, before starting the next — never reactively once quality has already dropped. Afterwards you MUST re-anchor: re-read the scratchpad and restate the current objective explicitly, because the condensed summary may omit earlier constraints or goals."
+    },
+    {
+      "front": "What makes subagent delegation actually valuable, and what's the failure mode?",
+      "back": "Each subagent starts with a FRESH context window scoped to its slice, so verbose work stays inside it and only a focused summary returns — enabling parallel exploration with no cross-contamination. Failure mode: an unscoped subagent told to 'explore the codebase' behaves exactly like a full-context single agent. The value comes from the boundaries — a specific directory, layer, or question."
+    },
+    {
+      "front": "In the coordinator pattern for codebase exploration, what does the coordinator never do?",
+      "back": "It never reads raw files itself — only summaries. It defines the exploration boundaries, launches scoped subagents, and collects their summaries into the shared scratchpad."
+    },
+    {
+      "front": "Exam trap: does reading 50 files mean you've covered 50% of the codebase's behaviour?",
+      "back": "No — file count is not coverage. Behaviour is concentrated in a small fraction of files. Invest context tokens in the high-signal files Grep identified, not in a breadth-first sweep. Reading every file 'to be thorough' is the #1 failure mode: irrelevant files displace the context that holds the answer."
+    },
+    {
+      "front": "When is /clear the better choice than /compact?",
+      "back": "When switching to genuinely unrelated work with no continuity needed. /compact is itself a large request — it re-reads the whole conversation it summarises — whereas /clear discards context and costs nothing. (Use /rename before clearing so you can /resume later; /context shows what's consuming the window.)"
+    }
+  ]
+}

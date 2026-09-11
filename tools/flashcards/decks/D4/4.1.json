@@ -1,0 +1,54 @@
+{
+  "domain": 4,
+  "task": "4.1",
+  "label": "Design prompts with explicit criteria to improve precision",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:15:36",
+  "source_pdfs": [
+    "4.1-clear-and-direct-prompting.pdf",
+    "4.1-design-prompts-with-explicit-criteria-to-improve-precision.pdf",
+    "4.1-output-consistency.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What is actually wrong with a prompt like 'review this code and find any issues'?",
+      "back": "It delegates the DEFINITION OF QUALITY to the model. Claude forms its own interpretation of what matters, which may differ from yours, vary between runs, and drift across models or versions — giving output that is hard to evaluate, parse, or act on."
+    },
+    {
+      "front": "Name the three practical benefits of explicit criteria.",
+      "back": "Repeatability — the same criteria produce the same kind of output on the same input. Evaluability — you can measure whether Claude found what you defined rather than judging an opinion. False-positive management — a precise scope stops Claude flagging style as a security bug or a performance note as a correctness bug."
+    },
+    {
+      "front": "Recite the domain mental model for D4.1.",
+      "back": "Specificity beats vagueness. Examples beat instructions. Schemas beat parsing. — Name the thing to check, not the class of things; show what a finding looks like before asking for findings; provide a JSON schema rather than asking Claude to invent a format."
+    },
+    {
+      "front": "What does a good criterion definition have to answer, and why is the second half the key lever?",
+      "back": "Both what a positive finding LOOKS LIKE and what it DOES NOT look like (a negative example / `notThis`). Telling Claude what qualifies is necessary but not sufficient — the negative example is the primary lever for false-positive reduction."
+    },
+    {
+      "front": "Exam trap: is 'check for injection vulnerabilities' an explicit criterion?",
+      "back": "No. A category NAME without a definition still delegates interpretation. Define which APIs, which patterns, and what context make it a positive — e.g. 'user-controlled input concatenated into a SQL string without parameterisation; not this: ORM methods with bound parameters'."
+    },
+    {
+      "front": "Why are false positives treated as expensive in this lesson, and what is their root cause?",
+      "back": "In automated pipelines they block deployments, page on-call engineers, and erode trust; in human-facing tools they exhaust reviewers. The root cause is almost always an under-specified prompt. An explicit criteria list constrains the search space — Claude still applies judgment WITHIN each criterion but doesn't invent new categories of concern."
+    },
+    {
+      "front": "How many criteria belong in one prompt, and what do you do beyond that?",
+      "back": "Roughly eight to ten. More than that dilutes attention and increases the chance of overlooked items — group related checks into sub-prompts or batch reviews (prompt chaining)."
+    },
+    {
+      "front": "Why is severity a separate axis from the criterion?",
+      "back": "Conflating them is a listed mistake. Define each criterion first, then specify how severity is assigned within it — e.g. 'SQL injection in a public endpoint is critical; in an admin-only route it is high'."
+    },
+    {
+      "front": "What is the `criteriaChecked` field for?",
+      "back": "Claude echoes back the list of criterion ids it actually checked, which confirms it did not silently skip one. It turns 'no findings' into a verifiable claim rather than an absence of evidence."
+    },
+    {
+      "front": "Where should long documents go in a 20k+ token prompt, and what's the measured effect?",
+      "back": "Put longform data and documents at the TOP, above the query, instructions, and examples — putting the query at the END can improve response quality by up to ~30% on complex multi-document inputs. Wrap documents in <document> tags with <document_content>/<source> subtags, and ask Claude to ground its answer by quoting the relevant parts first."
+    }
+  ]
+}

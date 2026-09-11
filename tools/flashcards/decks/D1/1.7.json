@@ -1,0 +1,56 @@
+{
+  "domain": 1,
+  "task": "1.7",
+  "label": "Manage session state resumption and forking",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:12:53",
+  "source_pdfs": [
+    "1.7-agent-sdk-sessions-fork-resume.pdf",
+    "1.7-claude-code-sdk.pdf",
+    "1.7-context-window-and-compaction.pdf",
+    "1.7-manage-session-state-resumption-and-forking.pdf",
+    "1.7-session-resume.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What exactly is a session, and what does it NOT persist?",
+      "back": "A named, persistent conversation thread — the full history the SDK accumulates (prompt, every tool call, every tool result, every response), written to disk so you can return later. It does NOT persist the filesystem: fork and resume branch the transcript only. Use file checkpointing to snapshot or revert an agent's file changes."
+    },
+    {
+      "front": "Distinguish continue, resume, and fork.",
+      "back": "Continue — reattaches to the most recent session in the current directory, no ID needed. Resume — reloads a specific session by the ID you supply. Fork — copies an existing session's history into a NEW session ID, leaving the original untouched. Both resume and fork require a session ID, so capture it first."
+    },
+    {
+      "front": "Who is responsible for keeping track of session IDs?",
+      "back": "You are — the SDK does not maintain a session registry. Persist each ID yourself and pair it with a metadata record (creation time, last-active time, current summary version). A session ID is a stable reference but carries no guarantee that model state matches your application state."
+    },
+    {
+      "front": "When should you fork rather than resume?",
+      "back": "To explore a risky or speculative path without polluting the canonical session, to run parallel sub-investigations from a common starting state, or to let a sub-agent work on a copy while the main agent continues on the original. The fork gets its own new ID; the parent's history stays unchanged."
+    },
+    {
+      "front": "What is context compaction, and why can't you rely on it to preserve critical state?",
+      "back": "When history approaches the context window's token budget, older turns are summarised into a compressed representation and the raw messages are discarded. Auto-compaction optimises for token efficiency, not task fidelity — so author explicit structured summaries at decision checkpoints and control what survives yourself."
+    },
+    {
+      "front": "What fields make a good structured session summary?",
+      "back": "goal, completedSteps, pendingSteps, keyDecisions, assumptions, and lastUpdated — with the assumptions flagged to be re-verified if resuming after more than 24 hours."
+    },
+    {
+      "front": "Where must a structured summary be injected, and where must it never go?",
+      "back": "Into the system prompt, or as the first user turn with a clear label (e.g. '[RESUMING SESSION …]'). Never as an assistant turn — that confuses the model about what it actually said and causes self-referential errors."
+    },
+    {
+      "front": "Contrast the risk and mitigation for a structured summary vs stale raw context.",
+      "back": "Structured summary: an authored digest of key facts; risk is omitting edge-case details; mitigate by authoring summaries at decision checkpoints. Stale raw context: verbatim old messages never pruned; risk is outdated decisions, superseded values, wrong state; mitigate by pruning or re-confirming state before resuming an old session."
+    },
+    {
+      "front": "What is the danger of resuming a session that was last active weeks ago?",
+      "back": "It carries that week's worldview — the code, API contracts, and environment it references may all have changed. Explicitly re-confirm the session's critical working assumptions before letting the agent act on them."
+    },
+    {
+      "front": "Why must you record parentSessionId on every fork?",
+      "back": "So you can trace decisions back to their origin and clean up dead branches. Forks that are never reconciled or discarded become orphaned context. Remember too that a fork's file edits are real and visible to any session in the same directory — only the conversation branched."
+    }
+  ]
+}

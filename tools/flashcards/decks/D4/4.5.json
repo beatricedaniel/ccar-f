@@ -1,0 +1,53 @@
+{
+  "domain": 4,
+  "task": "4.5",
+  "label": "Design efficient batch processing strategies",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:16:00",
+  "source_pdfs": [
+    "4.5-design-efficient-batch-processing-strategies.pdf",
+    "4.5-message-batches.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What is the decision rule for Message Batches vs the standard Messages API?",
+      "back": "If a human or dependent process is waiting for the response in real time → Messages API. If the results feed a downstream pipeline that runs hours later → Batches. Batches are for non-interactive work: summarisation pipelines, bulk sentiment analysis, dataset annotation, offline evals, moderation."
+    },
+    {
+      "front": "What discount do batches give, and what does that cost you?",
+      "back": "50% of standard Messages API rates on BOTH input and output, and the discount stacks with prompt caching. You pay for it in latency: up to a 24-hour processing window. It is a cost/throughput optimisation, not a latency optimisation."
+    },
+    {
+      "front": "How long does a batch take, and what happens to requests that don't finish?",
+      "back": "Most complete in under an hour; the hard ceiling is 24 hours. Results are available when all requests finish or after 24h, whichever comes first. Anything not processed within 24 hours is marked `expired` — and you are not billed for it."
+    },
+    {
+      "front": "What is custom_id, what are its constraints, and why is it mandatory?",
+      "back": "A caller-assigned identifier required on every request (1-64 chars, ^[a-zA-Z0-9_-]{1,64}$), preserved in the results so you can map each result back to its source record. Without it you'd need positional assumptions, which break when individual requests fail."
+    },
+    {
+      "front": "Exam trap: can you read batch results in the order you submitted them?",
+      "back": "No — results order is NOT guaranteed. Always match by custom_id, never by position. Results arrive as newline-delimited JSON (.jsonl) at the batch's results_url, and should be streamed rather than downloaded all at once."
+    },
+    {
+      "front": "How does failure work inside a batch?",
+      "back": "Per-item and independent — one failed request does not cancel the batch, and there is NO aggregate failure signal. Every result carries its own type, so your loop must branch on result.result.type before touching the message payload; assuming success causes silent data loss."
+    },
+    {
+      "front": "Name the four per-item result types.",
+      "back": "succeeded (includes the message), errored (invalid request or internal error — check result.error.error.type to decide whether to fix the body or retry), canceled (user cancelled before send), and expired (hit the 24h window before being sent). You are not billed for errored, canceled, or expired."
+    },
+    {
+      "front": "What is the recommended architecture for running batches, and the two persistence rules?",
+      "back": "A job-queue model: submit the batch, persist the batch_id to a durable store, and process results in a separate scheduled task — treat completion as an EVENT, not a blocking call. Persist batch_id before proceeding (a crash after submit otherwise loses the results), and don't reuse a custom_id across batches without encoding a batch or record ID, since custom_id is scoped to one batch."
+    },
+    {
+      "front": "How should you poll a batch, and what is the status progression?",
+      "back": "Poll every ~60 seconds (every 5 minutes for large annotation jobs) — tight loops waste quota and gain nothing. processing_status goes in_progress → ended (with `canceling` in between if you cancel, settling to ended). The request_counts object breaks down processing / succeeded / errored / canceled / expired."
+    },
+    {
+      "front": "Give the batch size limits and the main unsupported parameters.",
+      "back": "Up to 100,000 requests or 256 MB per batch, whichever comes first (over 256 MB → 413 request_too_large); the older handout quotes 10,000 requests. Results stay downloadable 29 days. Unsupported: stream: true, Fast mode/speed, store/previous_thread_event_id, cache_hint/context_hint, and max_tokens: 0 — max_tokens must be ≥1. Param validation is async, so dry-run one request against the Messages API first."
+    }
+  ]
+}

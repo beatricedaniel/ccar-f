@@ -1,0 +1,56 @@
+{
+  "domain": 1,
+  "task": "1.3",
+  "label": "Configure subagent invocation context passing and spawning",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:11:31",
+  "source_pdfs": [
+    "1.3-agents.pdf",
+    "1.3-configure-subagent-invocation-context-passing-and-spawning.pdf",
+    "1.3-memory-and-storage.pdf",
+    "1.3-subagents-task-tool.pdf",
+    "1.3-tool-use.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What is the primary mechanism for spawning a subagent in the Claude Agent SDK, and what three things does the call carry?",
+      "back": "The Task tool. The orchestrator calls Task with (1) a description of the work, (2) an optional allowedTools set, and (3) any context the subagent needs. The SDK launches a fresh agent loop, runs it to completion, and returns the result to the orchestrator."
+    },
+    {
+      "front": "What happens if you omit allowedTools when spawning a subagent?",
+      "back": "The subagent inherits ALL tools available in the environment — a common source of unintended side effects (e.g. a summarisation subagent that accidentally has shell execution). Always declare the minimal tool set: least privilege."
+    },
+    {
+      "front": "Why is 'pass the context by shared global state' a design error for subagents?",
+      "back": "Subagents run in isolated loops with no access to the orchestrator's conversation history or globals. Anything the subagent needs — user intent, prior results, file contents, config — must appear explicitly in its initial messages array. Shared state fails silently and is hard to debug."
+    },
+    {
+      "front": "You spawn several subagents that don't depend on each other. What is the mistake to avoid, and the fix?",
+      "back": "Mistake: awaiting them sequentially in a loop, wasting wall-clock time proportional to the number of agents. Fix: Promise.all for truly independent subagents, or Promise.allSettled when partial failures are acceptable."
+    },
+    {
+      "front": "When should you spawn a subagent rather than doing the work in the main conversation?",
+      "back": "When a side task would flood the main context with material you won't reference again — search results, logs, bulk file contents. The subagent does that work in its own context window and returns only the summary. Define a custom subagent when you keep spawning the same kind of worker."
+    },
+    {
+      "front": "In Claude Code, what does a subagent actually receive at launch?",
+      "back": "Its own context window with its custom system prompt and basic environment (e.g. working directory) — NOT the full Claude Code system prompt and NOT the parent conversation. It also has its own tool access and independent permissions."
+    },
+    {
+      "front": "Which subagent frontmatter fields are required, and what does `tools` default to?",
+      "back": "Required: name (unique, lowercase+hyphens, no ':') and description (when Claude should delegate to it). `tools` is optional and defaults to inheriting all tools; `disallowedTools` subtracts from that. `model` defaults to `inherit`."
+    },
+    {
+      "front": "What is the precedence order for subagent definitions, highest to lowest?",
+      "back": "1. Managed settings (org-wide) → 2. --agents CLI flag (session) → 3. .claude/agents/ (project) → 4. ~/.claude/agents/ (user) → 5. plugin agents/ directory."
+    },
+    {
+      "front": "How do you stop Claude Code from delegating at all, or block one specific subagent type?",
+      "back": "Deny the `Agent` tool itself in permissions.deny to prevent any delegation; add the specific built-in type to permissions.deny to block just that one."
+    },
+    {
+      "front": "What is distinctive about the built-in Explore subagent?",
+      "back": "It is a fast, read-only codebase search agent with Write/Edit denied and thoroughness levels (quick / medium / very thorough). Explore and Plan skip CLAUDE.md and git status to stay fast and cheap; every other subagent loads both."
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "domain": 5,
+  "task": "5.3",
+  "label": "Implement error propagation strategies across multi agent systems",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:17:00",
+  "source_pdfs": [
+    "5.3-building-effective-agents.pdf",
+    "5.3-claude-code-sdk.pdf",
+    "5.3-handling-tool-errors.pdf",
+    "5.3-implement-error-propagation-strategies-across-multi-agent-systems.pdf",
+    "5.3-mcp-tools.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What three things does correct error propagation in a multi-agent system require?",
+      "back": "Structured error context (machine-readable, not a raw exception string), semantic distinctions between failure types (access failure ≠ empty result ≠ transient), and a deliberate partial-result policy (fail entirely vs use what you have)."
+    },
+    {
+      "front": "Name the four fields every error crossing an agent boundary should carry.",
+      "back": "errorType (machine-readable category: access_denied, not_found, timeout, upstream_failure), sourceAgent (which subagent produced it), attemptedAction (the specific operation — tool name, query, step label), and partialResults (data collected before the failure). Plus a human-readable message."
+    },
+    {
+      "front": "Which error field is most commonly omitted, and why does that hurt?",
+      "back": "partialResults. If a subagent completed 80% of its work before failing, discarding that progress forces the coordinator to restart from scratch. Carrying it forward lets the coordinator choose to resume or discard."
+    },
+    {
+      "front": "Distinguish an access failure from an empty result, and why conflating them is dangerous.",
+      "back": "Access failure = denied permission, auth boundary, or policy block — retrying with the same credentials won't help, so the coordinator must escalate or skip the source with an explicit annotation. Empty result = the subagent completed successfully and found no matching data — not an error; continue, noting zero records. Conflating them causes either false alarms or a data gap that is invisible to the user."
+    },
+    {
+      "front": "When should a coordinator fail entirely vs use partial results?",
+      "back": "Fail entirely when the missing subagents hold data that materially changes the answer — the default for correctness-critical aggregations (a financial total from 3 of 5 accounts presented as complete is worse than an error). Use what you have when the failing subagents are supplementary or additive — the default for best-effort enrichment — but you must annotate which sources succeeded, which failed, and why."
+    },
+    {
+      "front": "What is the cardinal rule about partial data?",
+      "back": "Never silently return partial data as if it were complete. Always set a `partial` flag and include the list of failed sources — a response that LOOKS complete but silently drops failed sources is more dangerous than an explicit error."
+    },
+    {
+      "front": "Why shouldn't a fan-out stop at the first subagent failure?",
+      "back": "Aborting Promise.all early on a rejection means the coordinator never sees errors from the remaining agents. Run subagents so failures don't short-circuit each other, collect ALL results and errors into an aggregate, then make one decision about remediation."
+    },
+    {
+      "front": "Map each of the four error categories to its decision.",
+      "back": "Transient (timeout, network, upstream flake) → retry with backoff. Validation (bad input, not_found) → fix and retry, or fail that branch. Permission (access_denied, auth/policy block) → escalate, never retry. Business (valid request the rules reject) → surface or self-correct via isError: true."
+    },
+    {
+      "front": "What are MCP's two error-reporting mechanisms, and how are they handled differently?",
+      "back": "Protocol errors use standard JSON-RPC errors (error.code, e.g. -32602 unknown tool, malformed request) — clients MAY pass these to the LLM, since recovery is unlikely. Tool execution errors are returned inside a normal, successful tool result with isError: true (input-validation and business-logic errors) — clients SHOULD pass these to the LLM to enable self-correction. Don't confuse the two: isError lives inside the result, not in the JSON-RPC error object."
+    },
+    {
+      "front": "Why is returning a plain string error across an agent boundary an anti-pattern?",
+      "back": "A string can't carry errorType, sourceAgent, or partialResults, so the coordinator is forced to pattern-match on message text — brittle, and it breaks whenever the message wording changes."
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "domain": 3,
+  "task": "3.6",
+  "label": "Integrate claude code into ci cd pipelines",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:15:16",
+  "source_pdfs": [
+    "3.6-github-actions.pdf",
+    "3.6-headless-mode-cli-flags.pdf",
+    "3.6-integrate-claude-code-into-ci-cd-pipelines.pdf",
+    "3.6-json-schema.pdf"
+  ],
+  "cards": [
+    {
+      "front": "Which four capabilities make Claude Code usable in CI/CD?",
+      "back": "`-p` (--print) for non-interactive prompt execution, `--output-format json` for machine-readable output, `--json-schema` for enforcing a structured response shape, and stateless session isolation that prevents context leakage between pipeline runs."
+    },
+    {
+      "front": "What does `-p` do, and how does it compose with shell tooling?",
+      "back": "It passes the prompt on the command line, runs once, and exits — no REPL, no user input. It exits non-zero on failure so pipeline steps can gate on it, and it reads stdin, so you can pipe context in: `git diff HEAD~1 | claude -p \"Summarize this diff...\"`."
+    },
+    {
+      "front": "Why is stateless session isolation the CORRECT default in a pipeline?",
+      "back": "Every `claude -p` invocation is independent — no persistent session, no memory of prior runs, no shared context between jobs. That prevents stale context from one PR contaminating another and makes runs reproducible. For multi-turn work, chain explicitly by passing prior output as input, or use --continue / --resume <id>."
+    },
+    {
+      "front": "What does `--output-format json` guarantee, and what does it NOT?",
+      "back": "It wraps the response in a JSON envelope (result/content, session id, metadata, total_cost_usd) so scripts can parse it with jq. It does NOT constrain the content's shape — add `--json-schema` when downstream code expects specific typed fields. The structured value then lands in the `structured_output` field."
+    },
+    {
+      "front": "Exam trap: you pipe Claude's default output to jq and it fails. Why?",
+      "back": "Without `--output-format json`, Claude writes conversational prose to stdout — there's nothing for jq to parse. Always pair `--output-format json` with any downstream JSON parsing."
+    },
+    {
+      "front": "Why must CI steps check Claude Code's exit code?",
+      "back": "It exits 0 on success and non-zero on failure — API errors, rate limits, schema validation failures, missing auth. Without checking (or `set -e`), the step silently continues with empty output. SIGTERM gives exit code 143."
+    },
+    {
+      "front": "How should the API key reach a CI job?",
+      "back": "Stored as a CI/GitHub secret and injected as an environment variable (ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}) — never hardcoded in YAML or scripts. For GitHub Actions you can alternatively use CLAUDE_CODE_OAUTH_TOKEN from `claude setup-token`, but prefer an API key for org-wide use since the OAuth token is tied to one person's subscription."
+    },
+    {
+      "front": "What does `--bare` do, and why does it matter for scripted runs?",
+      "back": "It skips auto-discovery of hooks, skills*, custom commands, subagents, plugins, MCP servers, auto memory and CLAUDE.md — cutting startup time and giving the same result on every machine. Without it, a `-p` session loads the same context an interactive one would and will run project hooks and connect .mcp.json servers even in an untrusted folder (no trust dialog in -p). (*It still loads .claude/skills/.)"
+    },
+    {
+      "front": "What are the two ways to interact with the GitHub Action, and where do results go?",
+      "back": "Interactive — mention `@claude` in an issue or PR comment. Automation — supply a `prompt` input so it runs without a mention (on push, pull_request, or schedule). Results go to the workflow run log by default; Claude posts a comment only when the prompt directs it and it has a posting tool."
+    },
+    {
+      "front": "Why can a push made by the action fail to trigger downstream workflows?",
+      "back": "GitHub does not trigger workflows on commits made with the default GITHUB_TOKEN. Omit the `github_token` input so the action authenticates as the Claude GitHub App (whose pushes do trigger workflows), or pass a custom app token. Note the action also needs `id-token: write` permission for its default GitHub App auth."
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "domain": 3,
+  "task": "3.1",
+  "label": "Configure claude md files with appropriate hierarchy and scoping",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:13:34",
+  "source_pdfs": [
+    "3.1-claude-md-memory.pdf",
+    "3.1-configure-claude-md-files-with-appropriate-hierarchy-and-scoping.pdf",
+    "3.1-settings.pdf"
+  ],
+  "cards": [
+    {
+      "front": "Name the CLAUDE.md hierarchy from outermost to innermost, and what belongs at each level.",
+      "back": "Managed/org policy (whole org) → User ~/.claude/CLAUDE.md (personal style, every project on the machine) → Project ./CLAUDE.md (stack, team conventions) → Directory src/api/CLAUDE.md (subsystem patterns that would be noise elsewhere) → Local ./CLAUDE.local.md (just you, just this project; gitignore it)."
+    },
+    {
+      "front": "What is the scoping question to ask when deciding where an instruction goes?",
+      "back": "'Who needs to know this?' Every project I ever touch → user level. Everyone on the team, every time → project level. Only the engineer in this subsystem → directory level. Keeping instructions at the narrowest correct scope reduces cognitive load and context pollution."
+    },
+    {
+      "front": "Exam trap: does a subdirectory CLAUDE.md replace the parent's instructions?",
+      "back": "No — directory-level files are ADDITIVE. They extend the parent; all user-level and project-level rules stay active. Write them as supplements, not replacements."
+    },
+    {
+      "front": "How are conflicts between levels resolved, and what does a conflict signal?",
+      "back": "The more specific (inner) level wins — src/api/CLAUDE.md saying 'use async/await' overrides a project root saying 'prefer callbacks'. But a contradiction signals misconfiguration: document which level owns a decision instead of duplicating it."
+    },
+    {
+      "front": "Which CLAUDE.md files load at launch, and which load on demand?",
+      "back": "CLAUDE.md and CLAUDE.local.md in the CWD and every directory ABOVE it load at launch, as do imported files and .claude/rules/*.md without `paths` frontmatter. Files in subdirectories BELOW the CWD load on demand — only when Claude reads a file there — as do rules with `paths` frontmatter."
+    },
+    {
+      "front": "Exam trap: does splitting a large CLAUDE.md into @imports save context?",
+      "back": "No. Imported files load at launch exactly like inline text. Splitting helps organisation and lets teams own files independently, but the token cost is the same. To keep instructions out of context until needed, use path-scoped rules or skills."
+    },
+    {
+      "front": "How does @import resolve paths, and what is the depth limit?",
+      "back": "Relative paths resolve against the file CONTAINING the import, not the working directory; absolute and ~/ paths are allowed. Max recursion is 4 hops, but keep chains to about two levels (CLAUDE.md → rules, with rules not re-importing). Import parsing skips code spans, so `@README` in backticks is mentioned, not imported."
+    },
+    {
+      "front": "Is CLAUDE.md enforcement? How would you actually force a behaviour?",
+      "back": "No — it is context, not config. CLAUDE.md is delivered as a user message after the system prompt, so Claude tries to follow it with no strict-compliance guarantee. To force an action regardless of what Claude decides, use a hook (e.g. PreToolUse) or a settings/permission rule."
+    },
+    {
+      "front": "What is the recommended size limit for a CLAUDE.md, and why?",
+      "back": "Under 200 lines per file. Longer files consume more context and get worse adherence. (Claude will load a file up to 4 MiB and skips anything larger, but that's a hard ceiling, not a target.)"
+    },
+    {
+      "front": "State the settings.json precedence stack, and the one big exception.",
+      "back": "Highest to lowest: Managed → Command line → Project local (.claude/settings.local.json) → Shared project (.claude/settings.json) → User (~/.claude/settings.json). A higher level overrides the same key below it — EXCEPT list keys, which merge across scopes (e.g. permissions.allow, claudeMdExcludes) rather than replace."
+    }
+  ]
+}

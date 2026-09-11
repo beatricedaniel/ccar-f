@@ -1,0 +1,55 @@
+{
+  "domain": 1,
+  "task": "1.5",
+  "label": "Apply agent sdk hooks for tool call interception and data normalization",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:12:12",
+  "source_pdfs": [
+    "1.5-agent-sdk-hooks.pdf",
+    "1.5-apply-agent-sdk-hooks-for-tool-call-interception-and-data-normalization.pdf",
+    "1.5-building-effective-agents.pdf",
+    "1.5-tool-use.pdf"
+  ],
+  "cards": [
+    {
+      "front": "When does beforeToolCall fire, what does it receive, and what must it return?",
+      "back": "It fires after Claude requests a tool but BEFORE the tool executes. It receives the tool name and the input arguments, and returns the validated/normalised input object — a NEW object ({...toolInput, limit: cap}), never the mutated argument."
+    },
+    {
+      "front": "When does afterToolCall fire, and why does that timing matter for redaction?",
+      "back": "After the tool returns but BEFORE the result is sent back to the model. Because it runs before the model sees the output, redacting secrets there actually protects the context — redacting after the model has seen it is too late."
+    },
+    {
+      "front": "Define deterministic vs probabilistic compliance, and give the canonical example.",
+      "back": "Probabilistic = a system-prompt instruction ('always return dates in ISO 8601') that the model usually follows and fails silently when it doesn't. Deterministic = the rule enforced in code by a hook that runs every time, unconditionally. Anything that must be reliably true — sanitised inputs, normalised schemas, redacted PII, validated ranges — belongs in a hook."
+    },
+    {
+      "front": "Why do hooks belong outside tool implementations?",
+      "back": "They separate cross-cutting concerns from tool logic. A tool that queries a database shouldn't know about audit logging, input sanitisation, or schema normalisation. Hooks handle those once, centrally and consistently — every tool call passes through the same pipeline regardless of which tool runs."
+    },
+    {
+      "front": "Which direction does each interception point handle?",
+      "back": "before/Pre intercepts OUTBOUND tool inputs; after/Post intercepts INBOUND tool results. Don't swap them — it's a standard exam trap."
+    },
+    {
+      "front": "A validation hook detects an invalid argument. Should it throw or return a safe default?",
+      "back": "Throw, with a descriptive message. Swallowing the error and returning a default lets invalid tool calls proceed undetected; throwing surfaces the failure in logs and halts execution at the correct point."
+    },
+    {
+      "front": "How do Agent SDK hooks differ from Claude Code hooks?",
+      "back": "Agent SDK: beforeToolCall / afterToolCall callbacks defined in your TypeScript agent code, receiving and returning objects. Claude Code: PreToolUse / PostToolUse events configured in JSON settings or frontmatter, with shell/HTTP/MCP/prompt/agent handlers communicating over stdin plus exit codes and JSON. A question about callback functions is SDK; a question about settings files and exit codes is Claude Code."
+    },
+    {
+      "front": "In Claude Code command hooks, what do exit codes 0, 2 and anything else mean?",
+      "back": "0 = success (print JSON to stdout for structured control). 2 = blocking error — blocks the action on blockable events, with stderr as the reason. Any other non-zero = non-blocking error; the action proceeds. Exit 2 blocks even if the hook also prints valid JSON allowing the call."
+    },
+    {
+      "front": "Which Claude Code tool events can actually block, and which cannot?",
+      "back": "PreToolUse blocks the call, and PostToolBatch can stop the loop. PostToolUse and PostToolUseFailure cannot block — the tool already ran; they only surface stderr or additionalContext (or rewrite the result with updatedToolOutput). PermissionRequest ignores exit 2 — deny via the decision object instead."
+    },
+    {
+      "front": "Matcher trap: what does the matcher `mcp__memory` match?",
+      "back": "Nothing. Bare strings are exact matches, so you need `mcp__memory__.*` — the `.*` is required — to match all tools from that server. Any matcher containing a regex metacharacter is treated as an unanchored JS regex."
+    }
+  ]
+}

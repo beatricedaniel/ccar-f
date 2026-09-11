@@ -1,0 +1,54 @@
+{
+  "domain": 5,
+  "task": "5.5",
+  "label": "Design human review workflows and confidence calibration",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:17:38",
+  "source_pdfs": [
+    "5.5-build-with-claude.pdf",
+    "5.5-design-human-review-workflows-and-confidence-calibration.pdf",
+    "5.5-tool-use.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What is the goal of a human review workflow, stated precisely?",
+      "back": "Not to review everything, but to review the RIGHT things. Reviewing everything doesn't scale; reviewing nothing lets errors propagate — so the system must route only the right items to reviewers."
+    },
+    {
+      "front": "Name the four triggers for involving a human reviewer.",
+      "back": "1) Model confidence is low — below a CALIBRATED threshold. 2) Stakes are high — medical, financial, legal. 3) The document type is novel — limited training signal. 4) The output feeds downstream automation, where a mistake is silently compounded by later steps."
+    },
+    {
+      "front": "Why is field-level confidence better than document-level confidence?",
+      "back": "Aggregate confidence hides variation: a model can be 97% confident on a vendor name from a structured header and 58% on a handwritten date in the footer of the SAME document. Field-level scores let you flag just the uncertain fields (e.g. ['invoiceDate','taxId']) instead of discarding or re-reviewing the whole document."
+    },
+    {
+      "front": "Exam trap: does a 90% confidence score mean the model is right 90% of the time?",
+      "back": "No. Confidence is the model's internal ESTIMATE, not a guarantee of accuracy. A model reporting 90% confidence may only be correct 70% of the time — that's overconfidence. Always measure stated confidence against ground truth."
+    },
+    {
+      "front": "What is calibration, and what do you do when a confidence band under-performs?",
+      "back": "Calibration measures the relationship between stated confidence and observed accuracy by bucketing predictions by confidence range (accuracy = correctPredictions / totalPredictions). If the 80-90% bucket only achieves 65% actual accuracy, RAISE the review threshold for that document type (e.g. to 0.90) so more items get reviewed."
+    },
+    {
+      "front": "Why must calibration be run per document type?",
+      "back": "Because a model calibrated on invoices may be systematically overconfident on purchase orders. A single global threshold over-reviews high-confidence types and under-reviews low-confidence ones."
+    },
+    {
+      "front": "What is stratified sampling for, and how do sample rates vary?",
+      "back": "Reviewing a representative subset to measure system quality without reviewer burnout. Sample proportionally across document types × confidence bands (high/medium/low) × edge cases, with HIGHER rates for low-confidence bands and novel types, LOWER rates for well-understood high-confidence categories — allocating reviewer capacity where it adds most value."
+    },
+    {
+      "front": "Why is pure random sampling the wrong choice?",
+      "back": "It under-represents rare document types and the edge cases that matter most. Stratified sampling guarantees coverage across types, confidence bands and edge cases."
+    },
+    {
+      "front": "How should a review queue be ordered, and what is surfaced to the reviewer?",
+      "back": "Priority-ordered, NOT FIFO — lowest confidence and highest downstream impact first, with a priority score combining confidence × document-type risk weight × recency. Surface the FLAGGED FIELDS inline rather than the full document, to cut cognitive load and review fatigue."
+    },
+    {
+      "front": "Why are reviewer corrections important, and what happens if you only show a pass/fail flag?",
+      "back": "Corrections are ground-truth data: feed them back into calibration measurements or the thresholds never improve. And if reviewers see only a pass/fail flag instead of field-level confidence, they re-verify the ENTIRE document — wasting time and causing review fatigue."
+    }
+  ]
+}

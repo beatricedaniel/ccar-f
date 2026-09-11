@@ -1,0 +1,53 @@
+{
+  "domain": 3,
+  "task": "3.4",
+  "label": "Determine when to use plan mode vs direct execution",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:14:36",
+  "source_pdfs": [
+    "3.4-determine-when-to-use-plan-mode-vs-direct-execution.pdf",
+    "3.4-plan-mode.pdf"
+  ],
+  "cards": [
+    {
+      "front": "What does Plan Mode actually do, and how do you enter it?",
+      "back": "It runs a think-first workflow: Claude reads and investigates the codebase WITHOUT making changes, produces a written implementation plan, and waits for your approval before executing. Enter it with Shift+Tab (cycle until the status bar shows 'plan mode on') or start with `claude --permission-mode plan`."
+    },
+    {
+      "front": "List the six triggers for choosing Plan Mode.",
+      "back": "The task touches 3+ files (especially across modules); it involves cross-cutting concerns (auth, error handling, logging, schema migrations, API contracts); risk is high (production, shared libraries, public APIs); it is an architectural decision (a pattern, a restructure, a new abstraction); requirements are ambiguous; or you're in an unfamiliar codebase."
+    },
+    {
+      "front": "When is Direct Execution the right choice?",
+      "back": "The change is isolated to a single file with no downstream effects; the task is mechanical and low-risk (rename a variable, fix a typo, update a constant, add a comment); you already have a plan and are executing a pre-defined step; or planning overhead would exceed implementation effort — a five-minute plan for a two-line fix is waste."
+    },
+    {
+      "front": "Name the six factors in the complexity-assessment rubric.",
+      "back": "Files affected (1 vs 3+), cross-cutting concerns (none vs auth/logging/schema), risk level (dev-test only vs production/shared API), familiarity with the codebase (high vs low), reversibility (easy vs hard — DB migration, contract change), and ambiguity in requirements (none vs present)."
+    },
+    {
+      "front": "Exam trap: does any single rubric factor force a mode?",
+      "back": "No — evaluate the AGGREGATE. A two-file change that touches the authentication schema is still a Plan Mode task, and file count alone never decides it."
+    },
+    {
+      "front": "What is the Explore subagent, and what makes it different from Plan Mode?",
+      "back": "Explore is read-only investigation: it traverses the codebase and reads files in its OWN context window, modifies nothing, and reports a summary back (keeping the main context clean). Explore investigates to build understanding; Plan Mode produces the written implementation plan you approve. Explore is the precursor, not a substitute."
+    },
+    {
+      "front": "When is Explore particularly valuable?",
+      "back": "Mapping dependency graphs before a refactor, identifying all call sites of a function before changing its signature, understanding data flow across layers before modifying a shared model, and auditing config/environment-variable usage before adding infrastructure — i.e. whenever the scope itself is unknown."
+    },
+    {
+      "front": "What is the canonical flow for large or unfamiliar work?",
+      "back": "Explore → Plan → Execute: Explore to map scope and dependencies, Plan Mode to define the steps and get approval, then Direct Execution per step with review gates."
+    },
+    {
+      "front": "Exam trap: is approving a plan a guarantee that execution will be correct?",
+      "back": "No. Plan approval gates the APPROACH, not the implementation. Keep reviewing individual edits after the plan is approved."
+    },
+    {
+      "front": "What is the single most costly mode mistake, and what's the trap about Plan Mode's scope?",
+      "back": "Most costly: directly executing a refactor that touches shared interfaces or cross-cutting concerns with no plan — partial changes that break the build mid-way are far harder to recover from than five minutes of planning. The trap: Plan Mode is not only for large features — it's equally right for any precedent-setting decision (a new file structure, error-handling convention, or test pattern), regardless of line count."
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "domain": 5,
+  "task": "5.1",
+  "label": "Manage conversation context to preserve critical information",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:16:21",
+  "source_pdfs": [
+    "5.1-claude-code-cli.pdf",
+    "5.1-context-windows.pdf",
+    "5.1-long-context-tips.pdf",
+    "5.1-manage-conversation-context-to-preserve-critical-information.pdf"
+  ],
+  "cards": [
+    {
+      "front": "Recite the D5 domain mental model, and what counts against the context window.",
+      "back": "'Context is finite and degrades — extract facts, trim noise, verify provenance.' Everything in the request counts: the system prompt, all messages (including tool results, images, documents), tool definitions, and the generated output including extended thinking."
+    },
+    {
+      "front": "Name the three failure modes that erode context quality.",
+      "back": "1) Progressive summarization loss — each pass discards detail irretrievably. 2) Lost-in-the-middle — content in the middle of a long window is underweighted. 3) Tool output trimming — raw payloads are far larger than needed, wasting tokens and misdirecting attention."
+    },
+    {
+      "front": "Why is 'summarize the summary' the classic wrong answer, and what's the right pattern?",
+      "back": "Each pass flattens nuance: {\"status\":\"partial\",\"retried\":3,\"last_error\":\"timeout on shard 2\"} becomes 'the operation had some issues' — the specific facts that would have changed a downstream decision are gone. Right pattern: extract critical facts ONCE from the RAW source into a structured/typed artifact and carry that forward verbatim."
+    },
+    {
+      "front": "What is the lost-in-the-middle effect, and its practical implication?",
+      "back": "Retrieval accuracy is highest at the start (priming) and end (recency) of a long window; content in the middle is underweighted even though technically present (Liu et al., 2023). Implication: restate critical constraints, user-provided facts, and confirmed decisions at the POINT OF USE — never assume a fact from 50k tokens ago will surface accurately."
+    },
+    {
+      "front": "What are the two costs of untrimmed tool output, and where do you fix it?",
+      "back": "It consumes tokens that could carry useful signal, AND it increases the chance Claude focuses on the wrong part of the input. Fix it at the boundary, before the output enters the conversation: extract the needed fields, truncate long lists to a sample plus a count, and return structured summaries rather than raw blobs."
+    },
+    {
+      "front": "When should you invoke /compact, and why does timing matter?",
+      "back": "Proactively, at phase boundaries — when a phase of work is complete and its conclusions are clear. Invoking it reactively when the window is nearly exhausted means the summary is computed from an already-degraded window, so it captures noise rather than conclusions."
+    },
+    {
+      "front": "Why must extracted facts carry provenance?",
+      "back": "Without metadata about which tool call, which timestamp, and which run produced a fact, later turns cannot assess its freshness or validity. Carry enough metadata to verify a fact is still true."
+    },
+    {
+      "front": "Exam trap: does prompt caching reduce how much of the context window you use?",
+      "back": "No. Caching changes what you PAY, not whether tokens COUNT. Cached prefixes still occupy the window — input is reported across input_tokens, cache_read_input_tokens and cache_creation_input_tokens, and all three count toward the limit."
+    },
+    {
+      "front": "What are the current context-window sizes, and what happens on overflow?",
+      "back": "1M tokens for Opus 5/4.8/4.7/4.6, Sonnet 5, Sonnet 4.6 and the Fable/Mythos models (up to 128k output); 200k for Sonnet 4.5, Haiku 4.5 and older. If the input alone exceeds the window you get a 400 invalid_request_error ('prompt is too long'); on 4.5+ models, if input + max_tokens exceeds it the request is accepted but generation stops with stop_reason: 'model_context_window_exceeded'."
+    },
+    {
+      "front": "Which management levers exist beyond /compact?",
+      "back": "Server-side compaction (API, beta) — the primary strategy for long-running agentic workflows, auto-summarising earlier conversation on the server. Context editing — tool-result clearing and thinking-block clearing. The token counting API to estimate before sending. Plus extracting facts and trimming tool output at the boundary."
+    }
+  ]
+}

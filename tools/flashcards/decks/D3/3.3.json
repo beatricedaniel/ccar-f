@@ -1,0 +1,53 @@
+{
+  "domain": 3,
+  "task": "3.3",
+  "label": "Apply path specific rules for conditional convention loading",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:14:17",
+  "source_pdfs": [
+    "3.3-apply-path-specific-rules-for-conditional-convention-loading.pdf",
+    "3.3-path-specific-rules-claude-rules.pdf"
+  ],
+  "cards": [
+    {
+      "front": "By default, how are files in .claude/rules/ applied — and what changes that?",
+      "back": "By default every rule file loads at launch and applies globally to all files. Declaring a `paths:` list of glob patterns in the YAML frontmatter makes the rule conditional: it activates only when an active file matches at least one pattern, and is silently skipped otherwise."
+    },
+    {
+      "front": "What exactly triggers a path-scoped rule to load?",
+      "back": "Claude READING a file whose path matches one of the patterns — not every tool use, and not session start. Rules without `paths` load unconditionally at launch with the same priority as .claude/CLAUDE.md."
+    },
+    {
+      "front": "What three benefits does conditional convention loading give you?",
+      "back": "Precision (conventions apply only where relevant), conflict avoidance (React rules can't bleed into DB migrations, API rules can't hit test helpers), and maintainability (each file owns one concern scoped to one area) — plus reduced noise and token cost."
+    },
+    {
+      "front": "What root are `paths` globs matched against?",
+      "back": "Paths relative to the PROJECT ROOT, not the .claude/ directory. Write `src/components/**`, never `../../src/components/**`. (The exception is claudeMdExcludes in settings, whose globs match absolute paths.)"
+    },
+    {
+      "front": "Give the meaning of `**`, `*`, and `{a,b}` in a rule glob.",
+      "back": "`**` matches any number of path segments (src/**/*.ts = all .ts anywhere under src). `*` matches within a single segment (src/components/*.tsx = one directory, no recursion). `{a,b}` is brace expansion for alternatives (*.config.{js,ts})."
+    },
+    {
+      "front": "What is the 'forgotten extension variants' trap?",
+      "back": "A component directory may hold .tsx, .ts, .stories.tsx and .test.tsx. A pattern of only `*.tsx` silently drops the rest. List every relevant extension, use brace expansion {ts,tsx}, or drop the extension filter entirely (`src/components/**`) when the rule applies regardless of file type."
+    },
+    {
+      "front": "Can one file activate more than one rule? Give the canonical example.",
+      "back": "Yes — a file matching patterns in several rules loads them all. Editing src/api/__tests__/users.test.ts loads both the API rule (src/api/**) and the testing rule (**/*.test.ts)."
+    },
+    {
+      "front": "Why are two rules that both match src/api/**/*.ts with contradictory instructions a problem?",
+      "back": "It creates ambiguity and Claude may pick arbitrarily — there's no defined precedence between them. Scope rules by concern so no two rules make opposing claims about the same files."
+    },
+    {
+      "front": "What happens when no active file matches a path-scoped rule?",
+      "back": "The rule is silently skipped — no error, no warning. And if a convention has no rule file at all, Claude simply falls back to general behaviour. Use the InstructionsLoaded hook, or /context → Memory files, to see which instruction files actually loaded."
+    },
+    {
+      "front": "When should you use a rule, a skill, a nested CLAUDE.md, or a hook?",
+      "back": "Rule (no paths) for a whole-project convention; path-scoped rule for precise glob-controlled scoping of one concern; nested CLAUDE.md for broader 'everything under this directory' instructions (also on-demand); skill for task-specific instructions that shouldn't sit in context every session; hook when something must run at a fixed lifecycle point regardless of Claude's choice — rules and CLAUDE.md are context, not enforcement."
+    }
+  ]
+}

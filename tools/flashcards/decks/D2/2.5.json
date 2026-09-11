@@ -1,0 +1,53 @@
+{
+  "domain": 2,
+  "task": "2.5",
+  "label": "Select and apply built in tools effectively",
+  "model": "claude-opus-5 (authored in a Claude Code session)",
+  "generated_at": "2026-09-11T10:13:13",
+  "source_pdfs": [
+    "2.5-built-in-tools-reference.pdf",
+    "2.5-select-and-apply-built-in-tools-effectively.pdf"
+  ],
+  "cards": [
+    {
+      "front": "Name Claude Code's five built-in tools and the funnel order for using them.",
+      "back": "Grep, Glob, Read, Write, Edit. The progressive-narrowing funnel is Glob → Grep → Read → Edit: discover paths, search contents, inspect the one file, then make the smallest change."
+    },
+    {
+      "front": "What is the most common agent mistake with built-in tools, and the rule that prevents it?",
+      "back": "Trying to read the entire codebase before acting — it exhausts the context window and frequently fails. The rule: always search before reading. Grep to find the line number first, then Read with offset/limit."
+    },
+    {
+      "front": "Match each tool to its trigger: Grep, Glob, Read, Write, Edit.",
+      "back": "Grep — you know WHAT you're looking for but not where (regex over contents). Glob — you know the naming convention or directory structure (matches paths, reads no content). Read — you know the exact file and need to inspect it (offset/limit for large files). Write — creating a new file, or a full rewrite after reading. Edit — a targeted change to an existing file."
+    },
+    {
+      "front": "What two preconditions must hold before an Edit succeeds?",
+      "back": "The file must have been Read at least once in the session, and old_string must match exactly one location — include 2-3 lines of surrounding context to make it unique. Editing a never-Read file is invalid, and a non-unique old_string fails."
+    },
+    {
+      "front": "Why is using Write to make a one-line change dangerous?",
+      "back": "Write overwrites the complete file. If the file wasn't read first, the existing content is lost. Write is for creating a new file or a genuine full rewrite; use Edit for any targeted modification to an existing file."
+    },
+    {
+      "front": "Why must all file-path tools get absolute paths?",
+      "back": "Relative paths silently resolve against the process working directory, which may not match the project root — so the tool acts on the wrong file with no error. Confirm the absolute path before passing it."
+    },
+    {
+      "front": "Which built-in API tools run client-side, and which run server-side?",
+      "back": "Client-executed (you run them in your harness): Bash, Text editor, Memory, and self-hosted Computer use. Server-executed (Anthropic runs them): Web search, Web fetch, Code execution, Tool search, Advisor. Computer use can be either."
+    },
+    {
+      "front": "How are Anthropic-defined tools declared, and what's the trap?",
+      "back": "By `type` and `name` only — they are schema-less, with no input_schema. The trap: a custom tool you happen to name 'bash' is NOT the built-in bash, and type/name must match as a pair (e.g. text_editor_20250728 pairs with str_replace_based_edit_tool; using the old name str_replace_editor returns a 400)."
+    },
+    {
+      "front": "How should a request's context cost scale, and what does that mean for Glob and Grep patterns?",
+      "back": "Context usage should stay proportional to the task — every unnecessary Read or Glob dump is billed input tokens and crowds the window. So scope Glob to a subdirectory or extension (`**/*` on a monorepo returns thousands of paths) and narrow Grep by pattern, path, and type (searching 'error' across the whole repo is the classic wrong answer)."
+    },
+    {
+      "front": "When should you promote work from bash to a dedicated tool?",
+      "back": "Start with bash for breadth. Promote when you need to gate the action (security or reversibility), enforce staleness checks, render custom UI, or mark it parallel-safe/serialised. A dedicated tool gives the harness typed arguments it can intercept and audit; bash gives only an opaque command string."
+    }
+  ]
+}
