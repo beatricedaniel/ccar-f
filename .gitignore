@@ -1,0 +1,12 @@
+# Personal, machine-specific Claude Code settings (shared config lives in .claude/settings.json)
+.claude/settings.local.json
+
+# macOS
+.DS_Store
+
+# Transient state of the offline-assessment tool (only exists mid-session)
+tools/offline-assessment/session.json
+
+# Python
+__pycache__/
+*.pyc
