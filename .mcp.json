@@ -2,7 +2,13 @@
   "mcpServers": {
     "connectry-architect": {
       "command": "npx",
-      "args": ["-y", "connectry-architect-mcp"]
+      "args": [
+        "-y",
+        "connectry-architect-mcp"
+      ],
+      "env": {
+        "CONNECTRY_DB_PATH": "${CLAUDE_PROJECT_DIR:-.}/tools/connectry-progress/progress.db"
+      }
     }
   }
 }

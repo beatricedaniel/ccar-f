@@ -21,6 +21,7 @@ import hashlib
 import json
 import os
 import random
+import re
 import shutil
 import sys
 from datetime import datetime
@@ -59,6 +60,17 @@ USAGE = """offline-assessment.py — offline CCAR-F question drilling
   offline-assessment.py --selftest   validate the bank and the shuffle logic
   offline-assessment.py --seed N     replay a session's option ordering
   offline-assessment.py --export ID  write a markdown report (ID or "last")
+
+Headless mode — one question per invocation, no prompts. Built for driving a
+drill through a chat agent (e.g. a Claude Code cloud session, which has no tty):
+
+  offline-assessment.py --start [--domain 1-5|all] [--difficulty easy|medium|hard|mix]
+                                [--count N] [--seed N]
+  offline-assessment.py --answer a|b|c|d   grade, explain, show the next question
+  offline-assessment.py --skip             skip the current question
+  offline-assessment.py --status           where the current session stands
+  offline-assessment.py --finish           score and log the session now
+  offline-assessment.py --discard          throw the unfinished session away
 """
 
 
@@ -231,13 +243,28 @@ def cheatsheet(task):
 
 
 # --- shuffle & remap ------------------------------------------------------
+# Prose in `explanation` / `whyWrongMap` sometimes names an option by its letter
+# ("Option B correctly sets ..."). Those letters are written against the source
+# bank's ordering, so they must travel through the same bijection as everything
+# else — otherwise the shuffle points the student at the wrong option, which is
+# worse than not shuffling at all. 25 of the 390 questions contain one.
+PROSE_LETTER = re.compile(r"\b(option|answer|choice)(s?)\s+([A-D])\b", re.I)
+
+
+def remap_prose(text, new_of):
+    """Rewrite 'Option B' style references through the shuffle's letter mapping."""
+    return PROSE_LETTER.sub(
+        lambda m: f"{m.group(1)}{m.group(2)} {new_of[m.group(3).upper()]}", text)
+
+
 def present(q, seed):
     """Return a display copy of q with options shuffled and every letter remapped.
 
     Deterministic in (seed, q["id"]) alone — independent of question order, so a
-    logged session replays exactly. Both correctAnswer and every whyWrongMap key
-    move through the same bijection, so a rationale can never drift onto the wrong
-    option (the one bug here that would actively mis-teach).
+    logged session replays exactly. correctAnswer, every whyWrongMap key, AND any
+    letter named in the explanation prose move through the same bijection, so a
+    rationale can never drift onto the wrong option (the one bug here that would
+    actively mis-teach).
     """
     src = list(LETTERS)
     random.Random(f"{seed}:{q['id']}").shuffle(src)
@@ -247,8 +274,10 @@ def present(q, seed):
         "difficulty": q["difficulty"], "scenario": q["scenario"], "text": q["text"],
         "options": {new_of[old]: q["options"][old] for old in LETTERS},
         "correct": new_of[q["correctAnswer"]],
-        "why_wrong": {new_of[old]: why for old, why in q["whyWrongMap"].items()},
-        "explanation": q["explanation"], "references": q.get("references", []),
+        "why_wrong": {new_of[old]: remap_prose(why, new_of)
+                      for old, why in q["whyWrongMap"].items()},
+        "explanation": remap_prose(q["explanation"], new_of),
+        "references": q.get("references", []),
         "mapping": new_of,
     }
 
@@ -402,8 +431,8 @@ def show_question(p, idx, total, meta, correct_so_far, answered_so_far):
         print(bullet(f"{L})", p["options"][L]))
 
 
-def reveal(p, choice, meta):
-    """Show the verdict + explanation; returns nothing. Loops on [w]/[r]."""
+def print_verdict(p, choice):
+    """Verdict banner, the chosen/correct options, and the explanation."""
     print()
     rule("-")
     if choice == p["correct"]:
@@ -422,22 +451,36 @@ def reveal(p, choice, meta):
     print("\nWhy")
     print(blocks(p["explanation"]))
 
+
+def print_others(p, choice):
+    """Rationales for the options the student neither picked nor should have."""
+    for L in LETTERS:
+        if L != p["correct"] and L != choice:
+            print()
+            print(bullet(f"{L})", p["options"][L]))
+            print(wrap(p["why_wrong"][L], indent="      "))
+
+
+def print_refs(p):
+    for url in p["references"]:
+        print(f"   {url}")
+    sheet = cheatsheet(p["task"])
+    if sheet:
+        print(f"   Cheat sheet: {sheet}")
+
+
+def reveal(p, choice, meta):
+    """Show the verdict + explanation; returns nothing. Loops on [w]/[r]."""
+    print_verdict(p, choice)
+
     while True:
         nxt = ask("\n   [Enter] next · [w] why the others are wrong · "
                   "[r] references · [q] quit: ").lower()
         if nxt == "w":
-            for L in LETTERS:
-                if L != p["correct"] and L != choice:
-                    print()
-                    print(bullet(f"{L})", p["options"][L]))
-                    print(wrap(p["why_wrong"][L], indent="      "))
+            print_others(p, choice)
         elif nxt == "r":
             print()
-            for url in p["references"]:
-                print(f"   {url}")
-            sheet = cheatsheet(p["task"])
-            if sheet:
-                print(f"   Cheat sheet: {sheet}")
+            print_refs(p)
         elif nxt == "q":
             return "quit"
         else:
@@ -500,6 +543,142 @@ def run(bank, meta, seed, resume=None):
             break
 
     finalise(state, meta, bank)
+
+
+# --- headless mode --------------------------------------------------------
+# One question per process invocation, state carried in session.json, no prompts
+# anywhere. This is what makes the tool usable from an agent that can only run
+# non-interactive shell commands (a Claude Code cloud session has no tty).
+
+def load_state():
+    if not SESSION.exists():
+        die("No session in progress. Start one with --start.")
+    return json.loads(SESSION.read_text())
+
+
+def headless_present(state, bank, idx):
+    """Build the display copy of the question at `idx` in the saved session."""
+    by_id = {q["id"]: q for q in bank}
+    return present(by_id[state["ids"][idx]], state["seed"])
+
+
+def headless_show_next(state, bank, meta):
+    """Print the next unanswered question, or None if the session is complete."""
+    idx = len(state["answers"])
+    if idx >= len(state["ids"]):
+        return None
+    p = headless_present(state, bank, idx)
+    correct = sum(1 for a in state["answers"] if a["ok"])
+    attempted = sum(1 for a in state["answers"] if not a["skipped"])
+    show_question(p, idx + 1, len(state["ids"]), meta, correct, attempted)
+    print("\n   Reply with:  --answer a|b|c|d   ·   --skip")
+    return p
+
+
+def headless_start(bank, meta, seed, domain, difficulty, count):
+    if SESSION.exists():
+        s = json.loads(SESSION.read_text())
+        die(f"A session is already in progress "
+            f"({len(s['answers'])}/{s['planned']} answered). "
+            f"Continue it with --answer, or clear it with --finish / --discard.")
+
+    pool = sum(1 for q in bank
+               if (domain is None or q["domainId"] == domain)
+               and (difficulty is None or q["difficulty"] == difficulty))
+    scope = "All domains" if domain is None else f"D{domain}"
+    if pool == 0:
+        die(f"No questions for {scope} · {difficulty or 'mix'}.")
+    if count > pool:
+        die(f"Only {pool} questions available for {scope} · {difficulty or 'mix'} "
+            f"(asked for {count}). Use --count {pool} or fewer, or --difficulty mix.")
+
+    questions = select(bank, domain, difficulty, count, seed, seen_counts(read_history()))
+    state = {"seed": seed, "domain": domain, "difficulty": difficulty,
+             "planned": len(questions), "ids": [q["id"] for q in questions],
+             "answers": [], "started_at": datetime.now().isoformat(timespec="seconds")}
+    save_session(state)
+
+    print(f"\n{len(questions)} questions · {scope} · {difficulty or 'mix'} · seed {seed}")
+    if domain is None:
+        split = {}
+        for q in questions:
+            split[q["domainId"]] = split.get(q["domainId"], 0) + 1
+        print("  " + " · ".join(f"D{d} {split.get(d, 0)}" for d in sorted(WEIGHTS)))
+    headless_show_next(state, bank, meta)
+    return 0
+
+
+def headless_respond(bank, meta, letter):
+    """Record an answer (letter) or a skip (letter=None), then show what's next."""
+    state = load_state()
+    idx = len(state["answers"])
+    if idx >= len(state["ids"]):
+        die("Every question is already answered. Run --finish to score it.")
+    p = headless_present(state, bank, idx)
+
+    if letter is None:
+        state["answers"].append({"id": p["id"], "d": p["domain"], "t": p["task"],
+                                 "diff": p["difficulty"], "shown": p["correct"],
+                                 "picked": None, "ok": False, "skipped": True})
+        save_session(state)
+        print(f"\n   Skipped Q{idx + 1} — not counted either way.")
+    else:
+        state["answers"].append({"id": p["id"], "d": p["domain"], "t": p["task"],
+                                 "diff": p["difficulty"], "shown": p["correct"],
+                                 "picked": letter, "ok": letter == p["correct"],
+                                 "skipped": False})
+        save_session(state)
+        # No follow-up prompt is possible here, so print everything up front:
+        # the verdict, the other options' rationales, and the references.
+        print_verdict(p, letter)
+        print("\nThe other options")
+        print_others(p, letter)
+        print("\nReferences")
+        print_refs(p)
+
+    if headless_show_next(state, bank, meta) is None:
+        print("\n   Last question answered — scoring the session.")
+        finalise(state, meta, bank)
+    return 0
+
+
+def headless_status(bank, meta):
+    state = load_state()
+    answers = state["answers"]
+    correct = sum(1 for a in answers if a["ok"])
+    attempted = sum(1 for a in answers if not a["skipped"])
+    scope = "All domains" if state["domain"] is None else f"D{state['domain']}"
+    print(f"\nSession · {scope} · {state['difficulty'] or 'mix'} · seed {state['seed']}")
+    print(f"  started  {state['started_at'][:16].replace('T', ' ')}")
+    print(f"  answered {len(answers)}/{state['planned']}"
+          f"  ({len(answers) - attempted} skipped)")
+    if attempted:
+        print(f"  correct  {correct}/{attempted} ({pct(correct, attempted):.0f} %)")
+    if len(answers) < state["planned"]:
+        headless_show_next(state, bank, meta)
+    else:
+        print("\n  All questions answered — run --finish to score and log it.")
+    return 0
+
+
+def headless_finish(bank, meta):
+    state = load_state()
+    if not state["answers"]:
+        SESSION.unlink()
+        print("Nothing answered; session discarded.")
+        return 0
+    finalise(state, meta, bank)
+    return 0
+
+
+def headless_discard():
+    if not SESSION.exists():
+        print("No session in progress.")
+        return 0
+    s = json.loads(SESSION.read_text())
+    SESSION.unlink()
+    print(f"Discarded an unfinished session ({len(s['answers'])}/{s['planned']} answered).")
+    return 0
 
 
 # --- results & logging ----------------------------------------------------
@@ -762,11 +941,38 @@ def selftest():
                   f"{i}: why_wrong keys wrong after shuffle")
             for L, why in p["why_wrong"].items():
                 orig = [k for k in LETTERS if q["options"][k] == p["options"][L]][0]
-                check(q["whyWrongMap"][orig] == why, f"{i}: rationale detached from option")
+                check(remap_prose(q["whyWrongMap"][orig], p["mapping"]) == why,
+                      f"{i}: rationale detached from option")
             check(len(set(p["mapping"].values())) == 4, f"{i}: mapping not a bijection")
             check(present(q, seed) == p, f"{i}: not deterministic")
             n += 1
     print(f"  shuffle ........... {n} round-trips, lossless")
+
+    # A letter named in prose ("Option B ...") must land on the same option text
+    # after shuffling, or the explanation teaches the wrong answer.
+    prose_qs = checked = 0
+    for q in bank:
+        fields = [q["explanation"], *q["whyWrongMap"].values()]
+        if not any(PROSE_LETTER.search(s) for s in fields):
+            continue
+        prose_qs += 1
+        for seed in range(8):
+            p = present(q, seed)
+            for src_text, out_text in zip(fields,
+                                          [p["explanation"], *[
+                                              p["why_wrong"][p["mapping"][k]]
+                                              for k in q["whyWrongMap"]]]):
+                src_letters = [m.group(3).upper()
+                               for m in PROSE_LETTER.finditer(src_text)]
+                out_letters = [m.group(3).upper()
+                               for m in PROSE_LETTER.finditer(out_text)]
+                check(out_letters == [p["mapping"][L] for L in src_letters],
+                      f"{q['id']}: prose letter not remapped (seed {seed})")
+                for sl, ol in zip(src_letters, out_letters):
+                    check(q["options"][sl] == p["options"][ol],
+                          f"{q['id']}: prose points at the wrong option (seed {seed})")
+                    checked += 1
+    print(f"  prose letters ..... {prose_qs} questions, {checked} references remapped")
 
     dist = {L: 0 for L in LETTERS}
     for q in bank:
@@ -813,6 +1019,8 @@ def main():
     seed = random.randrange(2 ** 31)
     action = None
     export_id = None
+    answer_letter = None
+    h_domain, h_difficulty, h_count = None, None, 20
 
     while argv:
         arg = argv.pop(0)
@@ -833,6 +1041,50 @@ def main():
             if not argv:
                 die("--export needs a session id or 'last'")
             action, export_id = "export", argv.pop(0)
+        elif arg == "--start":
+            action = "start"
+        elif arg == "--answer":
+            if not argv:
+                die("--answer needs a letter (a, b, c or d)")
+            raw = argv.pop(0).strip().upper()
+            if raw not in LETTERS:
+                die(f"--answer takes a, b, c or d — got {raw!r}")
+            action, answer_letter = "answer", raw
+        elif arg == "--skip":
+            action = "skip"
+        elif arg == "--status":
+            action = "status"
+        elif arg == "--finish":
+            action = "finish"
+        elif arg == "--discard":
+            action = "discard"
+        elif arg == "--domain":
+            if not argv:
+                die("--domain needs 1-5 or 'all'")
+            raw = argv.pop(0).strip().lower().lstrip("d")
+            if raw == "all":
+                h_domain = None
+            elif raw.isdigit() and int(raw) in WEIGHTS:
+                h_domain = int(raw)
+            else:
+                die(f"--domain takes 1-5 or 'all' — got {raw!r}")
+        elif arg == "--difficulty":
+            if not argv:
+                die(f"--difficulty needs one of {', '.join(DIFFICULTIES)} or 'mix'")
+            raw = argv.pop(0).strip().lower()
+            if raw == "mix":
+                h_difficulty = None
+            elif raw in DIFFICULTIES:
+                h_difficulty = raw
+            else:
+                die(f"--difficulty takes {', '.join(DIFFICULTIES)} or 'mix' — got {raw!r}")
+        elif arg == "--count":
+            if not argv:
+                die("--count needs a number")
+            raw = argv.pop(0)
+            if not raw.isdigit() or int(raw) < 1:
+                die(f"--count needs a positive number — got {raw!r}")
+            h_count = int(raw)
         else:
             print(USAGE)
             die(f"Unknown option: {arg}")
@@ -841,11 +1093,23 @@ def main():
         return sync()
     if action == "selftest":
         return selftest()
+    if action == "discard":
+        return headless_discard()
 
     bank, meta = load_bank()
 
     if action == "stats":
         return stats(meta)
+    if action == "start":
+        return headless_start(bank, meta, seed, h_domain, h_difficulty, h_count)
+    if action == "answer":
+        return headless_respond(bank, meta, answer_letter)
+    if action == "skip":
+        return headless_respond(bank, meta, None)
+    if action == "status":
+        return headless_status(bank, meta)
+    if action == "finish":
+        return headless_finish(bank, meta)
     if action == "export":
         hist = read_history()
         if not hist:

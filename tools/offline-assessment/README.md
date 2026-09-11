@@ -32,6 +32,37 @@ During a question: `a`/`b`/`c`/`d` to answer, `s` to skip, `q` to quit and save.
 After answering: `Enter` for the next one, `w` for the other options' rationales,
 `r` for reference links and the matching local cheat sheet.
 
+## Headless mode (drilling without a terminal)
+
+The interactive loop needs a tty, which a Claude Code **cloud session doesn't have** —
+there you talk to Claude and Claude runs the commands. Headless mode does one question
+per invocation and never prompts, so a chat agent can drive the drill: it runs `--answer`
+with the letter you say, and pastes back the verdict.
+
+```sh
+python3 tools/offline-assessment/offline-assessment.py --start --domain 4 --difficulty hard --count 10
+python3 tools/offline-assessment/offline-assessment.py --answer c
+python3 tools/offline-assessment/offline-assessment.py --skip
+python3 tools/offline-assessment/offline-assessment.py --status
+```
+
+| Command | What it does |
+|---|---|
+| `--start` | Begin a session. `--domain 1-5\|all`, `--difficulty easy\|medium\|hard\|mix`, `--count N`, `--seed N`. Defaults: all domains, mix, 20 questions |
+| `--answer a\|b\|c\|d` | Grade the current question, explain it, print the next one |
+| `--skip` | Skip without revealing the answer, print the next one |
+| `--status` | Score so far, plus a reprint of the current question |
+| `--finish` | Score and log the session now, without answering the rest |
+| `--discard` | Throw an unfinished session away |
+
+State lives in the same `session.json` the interactive mode uses, so the two are
+interchangeable: start a drill headless on your laptop and finish it interactively, or the
+reverse. Answering the last question scores and logs the session automatically.
+
+Because there is no follow-up prompt, `--answer` prints everything at once — the verdict,
+your option's rationale, the correct one, the explanation, **all** the other options'
+rationales, and the reference links plus the local cheat sheet.
+
 ## Why the shuffle matters
 
 In the upstream bank the correct letter is hard-coded, and the MCP server never
@@ -41,8 +72,9 @@ correct 185/390 times (47.4 %)**, rising to 59 % in D3 and 11-of-13 for task sta
 enough to inflate practice scores and train a "when unsure, pick B" habit the real exam
 will punish.
 
-This tool remaps every question onto freshly shuffled letters, moving `correctAnswer`
-and all three `whyWrongMap` rationales through the same bijection. Measured over 78 000
+This tool remaps every question onto freshly shuffled letters, moving `correctAnswer`,
+all three `whyWrongMap` rationales, **and any letter named in the explanation prose**
+("Option B correctly sets…" — 25 of the 390 questions do this) through the same bijection. Measured over 78 000
 draws (all 390 questions × 200 seeds): **A 25.0 % / B 25.1 % / C 24.8 % / D 25.1 %** —
 chance, as it should be. Any single session is a 20-60 item sample, so its own letter
 spread will wobble; that is noise, not bias.

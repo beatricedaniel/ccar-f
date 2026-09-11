@@ -68,8 +68,10 @@ or `start_assessment` to drill → `start_practice_exam` to simulate.
 
 The server is declared project-scoped in `.mcp.json` (`npx -y connectry-architect-mcp`), so any
 checkout — including a remote/web Claude Code session — is offered it on startup; `claude mcp` manages
-it otherwise. Note its progress state is stored per-machine by the server, so dashboards and assessment
-history do **not** follow the repo.
+it otherwise. `.mcp.json` also sets `CONNECTRY_DB_PATH` to `tools/connectry-progress/progress.db`, so
+dashboards, assessment history and mastery live **in the repo** instead of the server's default
+per-machine `~/.connectry-architect/`. Progress made in a cloud session only survives if that file is
+committed — see `tools/connectry-progress/README.md`.
 
 The server's own source is a **git submodule** at `tools/connectrylab-architect-cert-mcp/`, pinned to
 the upstream repo (`github.com/Connectry-io/connectrylab-architect-cert-mcp`). It is not this repo's
@@ -83,12 +85,26 @@ before changing it. All are stdlib-only and write per-session JSON logs under th
 
 | Tool | Run | Network / cost |
 |---|---|---|
-| `tools/offline-assessment/offline-assessment.py` | `python3 tools/offline-assessment/offline-assessment.py` | **Offline, free.** Drills the pinned 390-question bank in `data/` with **shuffled options** (the upstream bank is 47% "B"). Flags: `--stats`, `--sync` (refresh snapshot from the MCP server), `--selftest` (run after `--sync`), `--seed`, `--export`. History in `history.jsonl`. |
+| `tools/offline-assessment/offline-assessment.py` | `python3 tools/offline-assessment/offline-assessment.py` | **Offline, free.** Drills the pinned 390-question bank in `data/` with **shuffled options** (the upstream bank is 47% "B"). Flags: `--stats`, `--sync` (refresh snapshot from the MCP server), `--selftest` (run after `--sync`), `--seed`, `--export`. History in `history.jsonl`. **Headless mode** (`--start` / `--answer a` / `--skip` / `--status` / `--finish`) does one question per invocation with no prompts — this is how to run a drill in a cloud session, where the user has no tty and you run the commands for them. |
 | `tools/labs/labs.py` | `python3 tools/labs/labs.py` | **Offline, free.** Coaches the four Exam Guide §8 Preparation Exercises from pre-authored `guides/*.json`. `--print-prompt <n>` prints an authoring prompt to (re)generate a guide inside a Claude Code session. |
 | `tools/flashcards/flashcards.py` | `python3 tools/flashcards/flashcards.py` | **Claude API** — needs `ANTHROPIC_API_KEY`, `pdftotext` (Poppler). Generates 10 cards per task from that task's theory PDFs; you only pay on generate/reset. Model via `FLASHCARDS_MODEL`. Decks in `decks/D<d>/<d>.<t>.json`. |
 | `tools/tutor/tutor.py` | `python3 tools/tutor/tutor.py <url-or-file>` | **Claude API** — needs `ANTHROPIC_API_KEY`. Turns a tutorial page into a 6–10 step self-graded walkthrough tagged by domain. Model via `TUTOR_MODEL`. Walkthroughs cached in `lessons/`. |
 
 Both API tools also honour `ANTHROPIC_WORKSPACE_ID` for identity-linked keys.
+
+## Working in a cloud session
+
+A Claude Code session on the web clones this repo into a fresh Ubuntu VM. What that means here:
+
+- `.mcp.json`, `.claude/settings.json`, `CLAUDE.md` and everything committed are available; the
+  user's local `~/.claude` config and their `claude mcp add` local-scope servers are not.
+- Python 3 and Node are pre-installed and `registry.npmjs.org` is on the default network allowlist,
+  so `npx -y connectry-architect-mcp` works. `pdftotext` is **not** installed — deck generation and
+  `--sync`-adjacent PDF work need `apt install -y poppler-utils` in the environment's setup script.
+- **The user has no terminal.** Every CLI here is an `input()` loop, so they cannot drive one
+  themselves. Use `offline-assessment.py`'s headless flags to run a drill on their behalf, and the
+  MCP tools for everything else. Don't pipe answers into the interactive tools — that means you
+  taking their quiz.
 
 ## Working in this repo
 

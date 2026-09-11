@@ -10,3 +10,7 @@ tools/offline-assessment/session.json
 # Python
 __pycache__/
 *.pyc
+
+# SQLite sidecars for the MCP progress DB (commit progress.db itself, not these)
+*.db-wal
+*.db-shm
