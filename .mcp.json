@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "connectry-architect": {
+      "command": "npx",
+      "args": ["-y", "connectry-architect-mcp"]
+    }
+  }
+}

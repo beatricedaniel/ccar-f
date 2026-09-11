@@ -19,6 +19,15 @@ weighted and scaled:
 
 Everything here is organised by those five domains and their 30 task statements (`<d>.<t>`).
 
+## Getting started
+
+```sh
+git clone --recurse-submodules https://github.com/beatricedaniel/ccar-f.git
+```
+
+(In an existing checkout: `git submodule update --init`.) The offline tools then run as-is;
+set `ANTHROPIC_API_KEY` only for `flashcards` and `tutor`.
+
 ## Structure
 
 ```
@@ -57,7 +66,11 @@ what is already cached is free. Model choice is per tool via `FLASHCARDS_MODEL` 
 
 The online study platform — curriculum, practice questions, timed practice exams, progress
 tracking and scaffolded projects — used from Claude Code as `mcp__connectry-architect__*`
-tools. `tools/connectrylab-architect-cert-mcp/` is a checkout of its
+tools. It is declared in `.mcp.json`, so any checkout of this repo is offered the server on
+startup (installed on demand via `npx`); progress state, however, lives on the machine that
+ran it and does not travel with the repo.
+
+`tools/connectrylab-architect-cert-mcp/` is a submodule tracking its
 [upstream repository](https://github.com/Connectry-io/connectrylab-architect-cert-mcp),
 kept here for reference; `offline-assessment.py --sync` pulls its question bank down for
 offline drilling.

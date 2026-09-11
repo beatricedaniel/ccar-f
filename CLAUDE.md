@@ -66,10 +66,15 @@ These tools are deferred — load their schemas with `ToolSearch` (e.g.
 `get_weak_areas` / `get_dashboard` to find gaps → `get_section_details` to study → `get_practice_question`
 or `start_assessment` to drill → `start_practice_exam` to simulate.
 
-Managed via `claude mcp` (pre-approved in `.claude/settings.local.json`). The server's own source is
-checked out at `tools/connectrylab-architect-cert-mcp/` — a **separate clone of the upstream repo**
-(`github.com/Connectry-io/connectrylab-architect-cert-mcp`), not this repo's code: don't commit into it
-or treat its files as study material.
+The server is declared project-scoped in `.mcp.json` (`npx -y connectry-architect-mcp`), so any
+checkout — including a remote/web Claude Code session — is offered it on startup; `claude mcp` manages
+it otherwise. Note its progress state is stored per-machine by the server, so dashboards and assessment
+history do **not** follow the repo.
+
+The server's own source is a **git submodule** at `tools/connectrylab-architect-cert-mcp/`, pinned to
+the upstream repo (`github.com/Connectry-io/connectrylab-architect-cert-mcp`). It is not this repo's
+code: don't commit into it or treat its files as study material. Clone with
+`git clone --recurse-submodules`, or run `git submodule update --init` in an existing checkout.
 
 ### Local CLI study tools (`tools/`)
 

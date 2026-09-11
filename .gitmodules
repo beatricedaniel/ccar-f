@@ -1,0 +1,3 @@
+[submodule "tools/connectrylab-architect-cert-mcp"]
+	path = tools/connectrylab-architect-cert-mcp
+	url = https://github.com/Connectry-io/connectrylab-architect-cert-mcp.git
